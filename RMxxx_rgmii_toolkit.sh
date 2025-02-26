@@ -2,8 +2,8 @@
 
 # Define toolkit paths
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/opt/bin:/opt/sbin:/usrdata/root/bin
-GITUSER="iamromulan"
-REPONAME="quectel-rgmii-toolkit"
+GITUSER="QuamCode"
+REPONAME="qAir-deployment"
 GITTREE="SDXLEMUR"
 GITMAINTREE="SDXLEMUR"
 GITDEVTREE="development-SDXLEMUR"
@@ -750,7 +750,7 @@ install_sshd() {
 
 ARCH=$(uname -a)
 if echo "$ARCH" | grep -q "aarch64"; then
-    cd /tmp && wget -O RM55x_rcPCIe_toolkit.sh https://raw.githubusercontent.com/iamromulan/quectel-rgmii-toolkit/SDXPINN/RM55x_rcPCIe_toolkit.sh && chmod +x RM55x_rcPCIe_toolkit.sh && ./RM55x_rcPCIe_toolkit.sh && cd /
+    cd /tmp && wget -O RM55x_rcPCIe_toolkit.sh https://raw.githubusercontent.com/QuamCode/qAir-deployment/SDXPINN/RM55x_rcPCIe_toolkit.sh && chmod +x RM55x_rcPCIe_toolkit.sh && ./RM55x_rcPCIe_toolkit.sh && cd /
     exit 0
 elif echo "$ARCH" | grep -q "armv7l"; then
     # Continue if architecture is armv7l
@@ -823,8 +823,8 @@ echo "                                      .=@@@@@-               "
 echo "                                           :+##+.            "
 
     echo -e "\e[92m"
-    echo "Welcome to iamromulan's RGMII Toolkit script for Quectel RMxxx Series modems!"
-    echo "Visit https://github.com/iamromulan for more!"
+    echo "Welcome to QuamCode's RGMII Toolkit script for Quectel RMxxx Series modems!"
+    echo "Visit https://github.com/QuamCode for more!"
     echo -e "\e[0m"
     echo "Select an option:"
     echo -e "\e[0m"

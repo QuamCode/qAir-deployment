@@ -2,8 +2,8 @@
 
 # Define constants
 # Define GitHub repo info
-GITUSER="iamromulan"
-REPONAME="quectel-rgmii-toolkit"
+GITUSER="QuamCode"
+REPONAME="qAir-deployment"
 GITTREE="SDXLEMUR"
 GITMAINTREE="SDXLEMUR"
 GITDEVTREE="development-SDXLEMUR"
@@ -57,8 +57,8 @@ cat <<EOF > "$TMP_SCRIPT"
 export HOME=/usrdata/root
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/opt/bin:/opt/sbin:/usrdata/root/bin
 # Define GitHub repo info
-GITUSER="iamromulan"
-REPONAME="quectel-rgmii-toolkit"
+GITUSER="QuamCode"
+REPONAME="qAir-deployment"
 GITTREE="SDXLEMUR"
 GITMAINTREE="SDXLEMUR"
 GITDEVTREE="development-SDXLEMUR"

@@ -34,8 +34,8 @@ toolkit_menu() {
         read -p "Select an option (1-3): " option
 
         case "$option" in
-            1) cd /tmp && wget -O RMxxx_rgmii_toolkit.sh https://raw.githubusercontent.com/iamromulan/quectel-rgmii-toolkit/SDXLEMUR/RMxxx_rgmii_toolkit.sh && chmod +x RMxxx_rgmii_toolkit.sh && ./RMxxx_rgmii_toolkit.sh && cd / ;;
-            2) cd /tmp && wget -O RMxxx_rgmii_toolkit.sh https://raw.githubusercontent.com/iamromulan/quectel-rgmii-toolkit/development-SDXLEMUR/RMxxx_rgmii_toolkit.sh && chmod +x RMxxx_rgmii_toolkit.sh && ./RMxxx_rgmii_toolkit.sh && cd / ;;
+            1) cd /tmp && wget -O RMxxx_rgmii_toolkit.sh https://raw.githubusercontent.com/QuamCode/qAir-deployment/SDXLEMUR/RMxxx_rgmii_toolkit.sh && chmod +x RMxxx_rgmii_toolkit.sh && ./RMxxx_rgmii_toolkit.sh && cd / ;;
+            2) cd /tmp && wget -O RMxxx_rgmii_toolkit.sh https://raw.githubusercontent.com/QuamCode/qAir-deployment/development-SDXLEMUR/RMxxx_rgmii_toolkit.sh && chmod +x RMxxx_rgmii_toolkit.sh && ./RMxxx_rgmii_toolkit.sh && cd / ;;
             3) break ;;
             *) echo "Invalid option. Please try again." ;;
         esac
@@ -70,7 +70,7 @@ apps_menu() {
 
 settings_menu() {
     while true; do
-        display_random_color "Welcome to" && display_green "iamromulan's" && display_random_color "Simple Console Menu"
+        display_random_color "Welcome to" && display_green "QuamCode's" && display_random_color "Simple Console Menu"
         display_green "Select an option:"
         echo "------------------"
         display_green "1. LAN Settings"
@@ -94,7 +94,7 @@ settings_menu() {
 
 main_menu() {
     while true; do
-        display_green "Welcome to iamromulan's Simple Console Menu"
+        display_green "Welcome to QuamCode's Simple Console Menu"
         display_green "To get back to this from the root shell, just type 'menu'"
         display_green "Select an option:"
         echo "------------------"

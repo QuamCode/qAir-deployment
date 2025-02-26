@@ -4,8 +4,8 @@ echo ""
 
 # Define toolkit paths and environment variables
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/opt/bin:/opt/sbin:/usrdata/root/bin
-GITUSER="iamromulan"
-REPONAME="quectel-rgmii-toolkit"
+GITUSER="QuamCode"
+REPONAME="qAir-deployment"
 GITTREE="SDXLEMUR"
 GITROOT="https://raw.githubusercontent.com/$GITUSER/$REPONAME/$GITTREE"
 USRDATA_DIR="/usrdata"

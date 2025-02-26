@@ -2,10 +2,10 @@
 
 # Configuration and directories
 CONFIG_FILE="/usrdata/simpleupdates/simpleupdate.conf"
-GITUSER="iamromulan"
+GITUSER="QuamCode"
 GITTREE="main"
 DIRECTORIES=("simpleadmin" "socat-at-bridge" "simplefirewall" "tailscale" "ttyd")
-BASE_URL="https://raw.githubusercontent.com/$GITUSER/quectel-rgmii-toolkit/$GITTREE"
+BASE_URL="https://raw.githubusercontent.com/$GITUSER/qAir-deployment/$GITTREE"
 LOG_FILE="/tmp/simpleupdate.log"
 
 # Load configuration
