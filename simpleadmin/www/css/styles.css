@@ -1,15 +1,49 @@
 /* import poppins */
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Epilogue:ital,wght@0,100..900;1,100..900&family=Fira+Code:wght@300..700&display=swap");
 
 /* import fontawesome icons */
 @import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css");
 
+:root {
+  --primary: hsl(117.23deg 85.4% 90.95%);
+  --primary-op: hsl(287 60% 65% / 0.1);
+  --gray: hsl(219 14% 71%);
+  --gray-op: hsl(219 14% 71% / 0.1);
+  --background: hsl(218 12% 18%);
+  --white: hsl(0 0% 100%);
+}
+
 * {
-  font-family: "Poppins", sans-serif;
+  font-family: "Fira Code", sans-serif;
 }
 
 .custom-checkbox .form-check-input {
   margin-right: 1px;
+}
+
+.card {
+  border-radius: 0px !important;
+  border: 1px solid var(--gray) !important;
+  position: relative;
+}
+
+.navbar-nav {
+  margin-left: auto !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 10px;
+}
+
+.nav-link::before {
+  content: "#";
+  color: var(--primary);
+  font-weight: normal;
+}
+
+.btn {
+  border: 1px solid var(--primary) !important;
+  border-radius: 0px !important;
+  font-weight: 500 !important;
 }
 
 .modal-overlay {
@@ -67,6 +101,11 @@
   animation: rotationBack 1s linear infinite;
   transform-origin: center center;
 }
+
+.hash {
+  color: hsl(117.23deg 85.4% 90.95%);
+}
+
 
 @keyframes rotation {
   0% {
