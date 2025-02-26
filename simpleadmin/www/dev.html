@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>qAirWave - Developer Page</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/bootstrap.min.css" />
+
+    <!-- Logo -->
+    <link rel="simpleadmin-logo" href="favicon.ico" />
+
+    <!-- Import Bootstrap and AlpineJS -->
+    <script src="js/bootstrap.bundle.min.js"></script>
+    <script src="js/alpinejs.min.js" defer></script>
+    
+    <style>
+      .btn-group { margin-bottom: 1rem; }
+      textarea { resize: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="container my-4" x-data="devControls()">
+        <!-- Navigation -->
+        <nav class="navbar navbar-expand-lg mt-2">
+          <div class="container-fluid">
+            <a class="navbar-brand" href="/"><span class="mb-0 h4">./qAir</span></a>
+            <button
+              class="navbar-toggler"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#navbarText"
+              aria-controls="navbarText"
+              aria-expanded="false"
+              aria-label="Toggle navigation"
+            >
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarText">
+              <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item"><a class="nav-link" href="/">home</a></li>
+                <li class="nav-item"><a class="nav-link" href="network.html">network</a></li>
+                <li class="nav-item"><a class="nav-link" href="/scanner.html">scan</a></li>
+                <li class="nav-item"><a class="nav-link" href="/settings.html">settings</a></li>
+                <li class="nav-item"><a class="nav-link" href="/sms.html">SMS</a></li>
+                <li class="nav-item"><a class="nav-link" href="/console">console</a></li>
+                <li class="nav-item"><a class="nav-link" href="/deviceinfo.html">hardware</a></li>
+              </ul>
+              <span class="navbar-text">
+                <button class="btn btn-link text-reset" id="darkModeToggle">
+                  Dark Mode
+                </button>
+              </span>
+            </div>
+          </div>
+        </nav>
+
+        <!-- Developer Controls Card -->
+        <div class="row mt-4">
+          <div class="col">
+            <div class="card">
+              <div class="card-header">Tailscale Developer Controls</div>
+              <div class="card-body">
+                <!-- Installation/Update -->
+                <div class="mb-3">
+                  <h5>Installation / Update</h5>
+                  <button class="btn btn-primary" @click="runCgi('/cgi-bin/update_tailscale.cgi')">
+                    Install/Update Tailscale
+                  </button>
+                </div>
+
+                <!-- Tailscale Web UI -->
+                <div class="mb-3">
+                  <h5>Tailscale Web UI</h5>
+                  <button class="btn btn-success me-2" @click="runCgi('/cgi-bin/configure_tailscale.cgi?action=enable-webui')">
+                    Enable Web UI
+                  </button>
+                  <button class="btn btn-danger" @click="runCgi('/cgi-bin/configure_tailscale.cgi?action=disable-webui')">
+                    Disable Web UI
+                  </button>
+                </div>
+
+                <!-- Tailnet Connection -->
+                <div class="mb-3">
+                  <h5>Tailnet Connection</h5>
+                  <button class="btn btn-primary me-2" @click="runCgi('/cgi-bin/configure_tailscale.cgi?action=connect')">
+                    Connect to Tailnet
+                  </button>
+                  <button class="btn btn-info me-2" @click="runCgi('/cgi-bin/configure_tailscale.cgi?action=connect-ssh')">
+                    Connect (SSH ON)
+                  </button>
+                  <button class="btn btn-warning me-2" @click="runCgi('/cgi-bin/configure_tailscale.cgi?action=reconnect')">
+                    Reconnect (SSH OFF)
+                  </button>
+                  <button class="btn btn-danger me-2" @click="runCgi('/cgi-bin/configure_tailscale.cgi?action=disconnect')">
+                    Disconnect
+                  </button>
+                  <button class="btn btn-dark" @click="runCgi('/cgi-bin/configure_tailscale.cgi?action=logout')">
+                    Logout
+                  </button>
+                </div>
+
+                <!-- Output Log -->
+                <div class="mb-3">
+                  <h5>Output Log</h5>
+                  <textarea class="form-control" rows="10" x-model="logOutput" readonly></textarea>
+                </div>
+              </div>
+              <div class="card-footer">
+                Use these controls to manage Tailscale
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- AlpineJS Script for Developer Controls -->
+    <script>
+      function devControls() {
+        return {
+          logOutput: "",
+          runCgi(url) {
+            fetch(url)
+              .then(response => response.text())
+              .then(data => {
+                let timestamp = new Date().toLocaleTimeString();
+                this.logOutput = `[${timestamp}] ${data}\n` + this.logOutput;
+              })
+              .catch(error => {
+                let timestamp = new Date().toLocaleTimeString();
+                this.logOutput = `[${timestamp}] Error: ${error}\n` + this.logOutput;
+              });
+          }
+        }
+      }
+    </script>
+  </body>
+  <script src="js/dark-mode.js"></script>
+</html>
