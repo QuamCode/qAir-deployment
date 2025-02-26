@@ -7,10 +7,16 @@ const toggleDarkMode = () => {
     html.removeAttribute('data-bs-theme');
     darkModeToggle.textContent = 'Dark Mode';
     localStorage.setItem('theme', 'light'); // Store the theme in localStorage
+    document.querySelectorAll('path').forEach(path => {
+      path.setAttribute('fill', '#000');
+    });
   } else {
     html.setAttribute('data-bs-theme', 'dark');
     darkModeToggle.textContent = 'Light Mode';
     localStorage.setItem('theme', 'dark'); // Store the theme in localStorage
+    document.querySelectorAll('path').forEach(path => {
+      path.setAttribute('fill', '#fff');
+    });
   }
 };
 
