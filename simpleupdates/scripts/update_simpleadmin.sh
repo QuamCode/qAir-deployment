@@ -182,6 +182,7 @@ echo -e "\e[1;31m2) Installing simpleadmin from the $GITTREE branch\e[0m"
 			wget $GITROOT/simpleadmin/www/sms.html
 			wget $GITROOT/simpleadmin/www/scanner.html
 			wget $GITROOT/simpleadmin/www/watchcat.html
+			wget $GITROOT/simpleadmin/www/uptime.html
 			sleep 1
 			cd $SIMPLE_ADMIN_DIR/www/js
 			wget $GITROOT/simpleadmin/www/js/alpinejs.min.js
@@ -207,6 +208,7 @@ echo -e "\e[1;31m2) Installing simpleadmin from the $GITTREE branch\e[0m"
 			wget $GITROOT/simpleadmin/www/cgi-bin/get_watchcat_status
 			wget $GITROOT/simpleadmin/www/cgi-bin/set_watchcat
 			wget $GITROOT/simpleadmin/www/cgi-bin/watchcat_maker
+			wget $GITROOT/simpleadmin/www/cgi-bin/dev_controls
 			sleep 1
 			cd /
             chmod +x $SIMPLE_ADMIN_DIR/www/cgi-bin/*
