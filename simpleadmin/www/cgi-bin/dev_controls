@@ -1,0 +1,111 @@
+#!/bin/bash
+# dev_controls.cgi
+# Make sure this file is executable: chmod +x dev_controls.cgi
+
+echo "Content-type: application/json"
+echo ""
+
+# Parse query parameters
+ACTION=$(echo "$QUERY_STRING" | sed -n 's/.*action=\([^&]*\).*/\1/p')
+PORT=$(echo "$QUERY_STRING" | sed -n 's/.*port=\([^&]*\).*/\1/p')
+
+# Set your Tailscale directory (update this path if needed)
+TAILSCALE_DIR="/usrdata/tailscale"
+
+# Function to check SSH status and current port.
+ssh_status() {
+    status=$(systemctl is-active sshd)
+    if [ "$status" = "active" ]; then
+        running=true
+    else
+        running=false
+    fi
+    # Grab the first non-comment Port line from sshd_config
+    ssh_port=$(grep -E '^Port ' /etc/ssh/sshd_config | head -n 1 | awk '{print $2}')
+    if [ -z "$ssh_port" ]; then
+      ssh_port="22"
+    fi
+    echo "{\"running\": $running, \"port\": \"$ssh_port\"}"
+}
+
+# Function to check Tailscale status.
+tailscale_status() {
+    output=$($TAILSCALE_DIR/tailscale status 2>&1)
+    # If output contains a Login URL, assume tailscale is waiting for login.
+    if echo "$output" | grep -q "Login URL:"; then
+      running=false
+      loginURL=$(echo "$output" | grep "Login URL:" | sed 's/.*Login URL: //')
+    else
+      running=true
+      loginURL=""
+    fi
+    # Replace any quotes in output so that JSON remains valid
+    safe_output=$(echo "$output" | sed 's/"/\\"/g')
+    echo "{\"running\": $running, \"output\": \"$safe_output\", \"loginURL\": \"$loginURL\"}"
+}
+
+# Main dispatch based on action.
+case "$ACTION" in
+  "ssh_status")
+    ssh_status
+    ;;
+  "ssh_disable")
+    systemctl stop sshd
+    sleep 1
+    ssh_json=$(ssh_status)
+    echo "{\"status\": \"SSH disabled\", \"ssh\": $ssh_json}"
+    ;;
+  "ssh_enable")
+    systemctl start sshd
+    sleep 1
+    ssh_json=$(ssh_status)
+    echo "{\"status\": \"SSH enabled\", \"ssh\": $ssh_json}"
+    ;;
+  "ssh_change_port")
+    if [ -n "$PORT" ]; then
+      # Update the Port line in sshd_config
+      sed -i "s/^Port .*/Port $PORT/" /etc/ssh/sshd_config
+      systemctl restart sshd
+      sleep 1
+      ssh_json=$(ssh_status)
+      echo "{\"status\": \"SSH port changed to $PORT\", \"ssh\": $ssh_json}"
+    else
+      echo '{"error": "Port not provided"}'
+    fi
+    ;;
+  "tailscale_status")
+    tailscale_status
+    ;;
+  "tailscale_up")
+    output=$($TAILSCALE_DIR/tailscale up --accept-dns=false --reset 2>&1)
+    sleep 1
+    tailscale_json=$(tailscale_status)
+    echo "{\"status\": \"Tailscale up\", \"tailscale\": $tailscale_json}"
+    ;;
+  "tailscale_up_ssh")
+    output=$($TAILSCALE_DIR/tailscale up --ssh --accept-dns=false --reset 2>&1)
+    sleep 1
+    tailscale_json=$(tailscale_status)
+    echo "{\"status\": \"Tailscale up (SSH)\", \"tailscale\": $tailscale_json}"
+    ;;
+  "tailscale_down")
+    output=$($TAILSCALE_DIR/tailscale down 2>&1)
+    sleep 1
+    tailscale_json=$(tailscale_status)
+    echo "{\"status\": \"Tailscale down\", \"tailscale\": $tailscale_json}"
+    ;;
+  "tailscale_logout")
+    output=$($TAILSCALE_DIR/tailscale logout 2>&1)
+    sleep 1
+    tailscale_json=$(tailscale_status)
+    echo "{\"status\": \"Tailscale logout\", \"tailscale\": $tailscale_json}"
+    ;;
+  "all_status")
+    ssh_json=$(ssh_status)
+    tailscale_json=$(tailscale_status)
+    echo "{\"ssh\": $ssh_json, \"tailscale\": $tailscale_json}"
+    ;;
+  *)
+    echo '{"error": "Unknown action"}'
+    ;;
+esac
