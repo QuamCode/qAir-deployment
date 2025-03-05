@@ -5,16 +5,19 @@
 echo "Content-type: application/json"
 echo ""
 
+# Define bin paths
+SUDO="/opt/bin/sudo"
+SYSTEMCTL="/bin/systemctl"    # Adjust if systemctl is located elsewhere
+TAILSCALE_DIR="/usrdata/tailscale"
+TAILSCALE="$TAILSCALE_DIR/tailscale"
+
 # Parse query parameters
 ACTION=$(echo "$QUERY_STRING" | sed -n 's/.*action=\([^&]*\).*/\1/p')
 PORT=$(echo "$QUERY_STRING" | sed -n 's/.*port=\([^&]*\).*/\1/p')
 
-# Set your Tailscale directory (update this path if needed)
-TAILSCALE_DIR="/usrdata/tailscale"
-
 # Function to check SSH status and current port.
 ssh_status() {
-    status=$(systemctl is-active sshd)
+    status=$($SYSTEMCTL is-active sshd)
     if [ "$status" = "active" ]; then
         running=true
     else
@@ -30,7 +33,7 @@ ssh_status() {
 
 # Function to check Tailscale status.
 tailscale_status() {
-    output=$($TAILSCALE_DIR/tailscale status 2>&1)
+    output=$($TAILSCALE status 2>&1)
     # If output contains a Login URL, assume tailscale is waiting for login.
     if echo "$output" | grep -q "Login URL:"; then
       running=false
@@ -50,13 +53,13 @@ case "$ACTION" in
     ssh_status
     ;;
   "ssh_disable")
-    systemctl stop sshd
+    $SUDO $SYSTEMCTL stop sshd
     sleep 1
     ssh_json=$(ssh_status)
     echo "{\"status\": \"SSH disabled\", \"ssh\": $ssh_json}"
     ;;
   "ssh_enable")
-    systemctl start sshd
+    $SUDO $SYSTEMCTL start sshd
     sleep 1
     ssh_json=$(ssh_status)
     echo "{\"status\": \"SSH enabled\", \"ssh\": $ssh_json}"
@@ -65,7 +68,7 @@ case "$ACTION" in
     if [ -n "$PORT" ]; then
       # Update the Port line in sshd_config
       sed -i "s/^Port .*/Port $PORT/" /etc/ssh/sshd_config
-      systemctl restart sshd
+      $SUDO $SYSTEMCTL restart sshd
       sleep 1
       ssh_json=$(ssh_status)
       echo "{\"status\": \"SSH port changed to $PORT\", \"ssh\": $ssh_json}"
@@ -77,25 +80,25 @@ case "$ACTION" in
     tailscale_status
     ;;
   "tailscale_up")
-    output=$($TAILSCALE_DIR/tailscale up --accept-dns=false --reset 2>&1)
+    output=$($SUDO $TAILSCALE up --accept-dns=false --reset 2>&1)
     sleep 1
     tailscale_json=$(tailscale_status)
     echo "{\"status\": \"Tailscale up\", \"tailscale\": $tailscale_json}"
     ;;
   "tailscale_up_ssh")
-    output=$($TAILSCALE_DIR/tailscale up --ssh --accept-dns=false --reset 2>&1)
+    output=$($SUDO $TAILSCALE up --ssh --accept-dns=false --reset 2>&1)
     sleep 1
     tailscale_json=$(tailscale_status)
     echo "{\"status\": \"Tailscale up (SSH)\", \"tailscale\": $tailscale_json}"
     ;;
   "tailscale_down")
-    output=$($TAILSCALE_DIR/tailscale down 2>&1)
+    output=$($SUDO $TAILSCALE down 2>&1)
     sleep 1
     tailscale_json=$(tailscale_status)
     echo "{\"status\": \"Tailscale down\", \"tailscale\": $tailscale_json}"
     ;;
   "tailscale_logout")
-    output=$($TAILSCALE_DIR/tailscale logout 2>&1)
+    output=$($SUDO $TAILSCALE logout 2>&1)
     sleep 1
     tailscale_json=$(tailscale_status)
     echo "{\"status\": \"Tailscale logout\", \"tailscale\": $tailscale_json}"
