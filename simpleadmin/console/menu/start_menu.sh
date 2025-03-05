@@ -24,18 +24,16 @@ display_red() {
 
 toolkit_menu() {
     while true; do
-        display_random_color "Run a Toolkit version"
+        display_random_color "Run a Toolkit"
         display_green "Select an option:"
         echo "------------------"
-        display_green "1. Get and run the Toolkit"
-        display_random_color "2. Get and run the Development/unstable Toolkit"
-        display_random_color "3. Exit (Enter Root Shell)"
+        display_green "1. Run Manager Toolkit"
+        display_random_color "2. Exit (Enter Root Shell - here be dragons)"
         echo
-        read -p "Select an option (1-3): " option
+        read -p "Select an option (1-2): " option
 
         case "$option" in
             1) cd /tmp && wget -O RMxxx_rgmii_toolkit.sh https://raw.githubusercontent.com/QuamCode/qAir-deployment/SDXLEMUR/RMxxx_rgmii_toolkit.sh && chmod +x RMxxx_rgmii_toolkit.sh && ./RMxxx_rgmii_toolkit.sh && cd / ;;
-            2) cd /tmp && wget -O RMxxx_rgmii_toolkit.sh https://raw.githubusercontent.com/QuamCode/qAir-deployment/development-SDXLEMUR/RMxxx_rgmii_toolkit.sh && chmod +x RMxxx_rgmii_toolkit.sh && ./RMxxx_rgmii_toolkit.sh && cd / ;;
             3) break ;;
             *) echo "Invalid option. Please try again." ;;
         esac
@@ -94,8 +92,9 @@ settings_menu() {
 
 main_menu() {
     while true; do
-        display_green "Welcome to QuamCode's Simple Console Menu"
+        display_green "Welcome to ./qAir Console Menu"
         display_green "To get back to this from the root shell, just type 'menu'"
+        display_red "WARNING: You are accessing changes to the system that disrupt its intended operation may cause the device to go offline or become unstable. Support for issues caused by unauthorized modifications is limited or unavailable. Proceed with caution and at your own risk."
         display_green "Select an option:"
         echo "------------------"
         display_random_color "1. Apps"
