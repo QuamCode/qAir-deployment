@@ -131,7 +131,7 @@ install_lighttpd() {
     wget -O "$SIMPLE_ADMIN_DIR/lighttpd.conf" $GITROOT/simpleadmin/lighttpd.conf
     wget -O "/lib/systemd/system/lighttpd.service" $GITROOT/simpleadmin/systemd/lighttpd.service
     ln -sf "/lib/systemd/system/lighttpd.service" "/lib/systemd/system/multi-user.target.wants/"
-    echo "www-data ALL = (root) NOPASSWD: /usr/sbin/iptables, /usrdata/tailscale/tailscale, /bin/systemctl, /usr/sbin/ip6tables, /usrdata/simplefirewall/ttl-override, /bin/echo, /bin/cat" > /opt/etc/sudoers.d/www-data
+    echo "www-data ALL = (root) NOPASSWD: /opt/bin/sudo, /usr/sbin/iptables, /usrdata/tailscale/tailscale, /bin/systemctl, /usr/sbin/ip6tables, /usrdata/simplefirewall/ttl-override, /bin/echo, /bin/cat" > /opt/etc/sudoers.d/www-data
 
     openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
         -subj "/C=US/ST=MI/L=Romulus/O=RMIITools/CN=localhost" \
