@@ -17,7 +17,7 @@ PORT=$(echo "$QUERY_STRING" | sed -n 's/.*port=\([^&]*\).*/\1/p')
 
 # Function to check SSH status and current port.
 ssh_status() {
-    status=$($SYSTEMCTL is-active sshd)
+    status=$($SUDO $SYSTEMCTL is-active sshd)
     if [ "$status" = "active" ]; then
         running=true
     else
@@ -33,7 +33,8 @@ ssh_status() {
 
 # Function to check Tailscale status.
 tailscale_status() {
-    output=$($TAILSCALE status 2>&1)
+    # Use sudo for the tailscale status command.
+    output=$($SUDO $TAILSCALE status 2>&1)
     # If output contains a Login URL, assume tailscale is waiting for login.
     if echo "$output" | grep -q "Login URL:"; then
       running=false
@@ -42,7 +43,7 @@ tailscale_status() {
       running=true
       loginURL=""
     fi
-    # Replace any quotes in output so that JSON remains valid
+    # Escape quotes in the output to keep valid JSON.
     safe_output=$(echo "$output" | sed 's/"/\\"/g')
     echo "{\"running\": $running, \"output\": \"$safe_output\", \"loginURL\": \"$loginURL\"}"
 }
