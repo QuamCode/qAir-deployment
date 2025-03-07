@@ -1,30 +1,30 @@
 #!/bin/bash
 # dev_controls.cgi
-# Make sure this file is executable: chmod +x dev_controls.cgi
+# Ensure this file is executable: chmod +x dev_controls.cgi
 
 echo "Content-type: application/json"
 echo ""
 
-# Define bin paths
+# Define bin paths – adjust SUDO if necessary!
 SUDO="/opt/bin/sudo"
-SYSTEMCTL="/bin/systemctl"    # Adjust if systemctl is located elsewhere
+SYSTEMCTL="/bin/systemctl"
 TAILSCALE_DIR="/usrdata/tailscale"
 TAILSCALE="$TAILSCALE_DIR/tailscale"
 
-# Parse query parameters
+# Parse query parameters safely from QUERY_STRING
 ACTION=$(echo "$QUERY_STRING" | sed -n 's/.*action=\([^&]*\).*/\1/p')
 PORT=$(echo "$QUERY_STRING" | sed -n 's/.*port=\([^&]*\).*/\1/p')
 
 # Function to check SSH status and current port.
 ssh_status() {
-    status=$($SUDO $SYSTEMCTL is-active sshd)
+    status=$($SUDO $SYSTEMCTL is-active sshd 2>/dev/null)
     if [ "$status" = "active" ]; then
         running=true
     else
         running=false
     fi
-    # Grab the first non-comment Port line from sshd_config
-    ssh_port=$(grep -E '^Port ' /etc/ssh/sshd_config | head -n 1 | awk '{print $2}')
+    # Grab the first non-comment Port line from sshd_config.
+    ssh_port=$(grep -E '^[[:space:]]*Port ' /etc/ssh/sshd_config | grep -v '^[[:space:]]*#' | head -n 1 | awk '{print $2}')
     if [ -z "$ssh_port" ]; then
       ssh_port="22"
     fi
@@ -33,9 +33,7 @@ ssh_status() {
 
 # Function to check Tailscale status.
 tailscale_status() {
-    # Use sudo for the tailscale status command.
     output=$($SUDO $TAILSCALE status 2>&1)
-    # If output contains a Login URL, assume tailscale is waiting for login.
     if echo "$output" | grep -q "Login URL:"; then
       running=false
       loginURL=$(echo "$output" | grep "Login URL:" | sed 's/.*Login URL: //')
@@ -43,12 +41,13 @@ tailscale_status() {
       running=true
       loginURL=""
     fi
-    # Escape quotes in the output to keep valid JSON.
+    # Escape any quotes in the output and loginURL to keep valid JSON.
     safe_output=$(echo "$output" | sed 's/"/\\"/g')
-    echo "{\"running\": $running, \"output\": \"$safe_output\", \"loginURL\": \"$loginURL\"}"
+    safe_loginURL=$(echo "$loginURL" | sed 's/"/\\"/g')
+    echo "{\"running\": $running, \"output\": \"$safe_output\", \"loginURL\": \"$safe_loginURL\"}"
 }
 
-# Main dispatch based on action.
+# Main command dispatcher.
 case "$ACTION" in
   "ssh_status")
     ssh_status
@@ -67,8 +66,8 @@ case "$ACTION" in
     ;;
   "ssh_change_port")
     if [ -n "$PORT" ]; then
-      # Update the Port line in sshd_config
-      sed -i "s/^Port .*/Port $PORT/" /etc/ssh/sshd_config
+      # Update only uncommented Port lines in sshd_config.
+      sed -i "s/^\([[:space:]]*Port \).*/\1$PORT/" /etc/ssh/sshd_config
       $SUDO $SYSTEMCTL restart sshd
       sleep 1
       ssh_json=$(ssh_status)
