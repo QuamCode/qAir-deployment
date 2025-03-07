@@ -32,8 +32,17 @@ ssh_status() {
 }
 
 # Function to check Tailscale status.
-# Function to check Tailscale status.
 tailscale_status() {
+    # First try the JSON output from Tailscale.
+    output_json=$($SUDO $TAILSCALE status --json 2>&1)
+    first_char=$(echo "$output_json" | cut -c1)
+    if [ "$first_char" = "{" ]; then
+         # Valid JSON output; assume tailscale is running.
+         echo "{\"running\": true, \"connections\": $output_json}"
+         return
+    fi
+
+    # Fallback: use plain text parsing.
     output=$($SUDO $TAILSCALE status 2>&1)
     if echo "$output" | grep -q "Login URL:"; then
       # Tailscale is waiting for login.
@@ -48,7 +57,7 @@ tailscale_status() {
       running=true
       loginURL=""
     fi
-    # Escape any quotes in the output and loginURL to keep valid JSON.
+    # Escape any quotes in the output and loginURL for valid JSON.
     safe_output=$(echo "$output" | sed 's/"/\\"/g')
     safe_loginURL=$(echo "$loginURL" | sed 's/"/\\"/g')
     echo "{\"running\": $running, \"output\": \"$safe_output\", \"loginURL\": \"$safe_loginURL\"}"
@@ -89,6 +98,7 @@ case "$ACTION" in
   "tailscale_up")
     output=$($SUDO $TAILSCALE up --accept-dns=false --reset 2>&1)
     sleep 1
+    # tailscale_status will pick up any login URL from the output if present.
     tailscale_json=$(tailscale_status)
     echo "{\"status\": \"Tailscale up\", \"tailscale\": $tailscale_json}"
     ;;
