@@ -155,7 +155,7 @@
 
           // Run a command by calling the CGI script.
           runCommand(action, port = null) {
-            let url = '/cgi-bin/dev_controls.cgi?action=' + action;
+            let url = '/cgi-bin/dev_controls?action=' + action;
             if (port) {
               url += '&port=' + port;
             }

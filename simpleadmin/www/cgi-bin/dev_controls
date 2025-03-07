@@ -32,12 +32,19 @@ ssh_status() {
 }
 
 # Function to check Tailscale status.
+# Function to check Tailscale status.
 tailscale_status() {
     output=$($SUDO $TAILSCALE status 2>&1)
     if echo "$output" | grep -q "Login URL:"; then
+      # Tailscale is waiting for login.
       running=false
       loginURL=$(echo "$output" | grep "Login URL:" | sed 's/.*Login URL: //')
+    elif echo "$output" | grep -q "Logged out"; then
+      # Tailscale is logged out.
+      running=false
+      loginURL=""
     else
+      # Tailscale is running normally.
       running=true
       loginURL=""
     fi
