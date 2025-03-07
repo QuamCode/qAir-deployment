@@ -58,9 +58,12 @@ tailscale_status() {
       loginURL=""
     fi
 
-    # Remove newline and carriage return characters and escape quotes.
-    safe_output=$(echo "$output" | tr '\n' ' ' | tr '\r' ' ' | sed 's/"/\\"/g')
-    safe_loginURL=$(echo "$loginURL" | tr '\n' ' ' | tr '\r' ' ' | sed 's/"/\\"/g')
+    # Sanitize the output:
+    # 1. Replace newlines, carriage returns, and tabs with spaces.
+    # 2. Remove any remaining control characters.
+    # 3. Escape any double quotes.
+    safe_output=$(echo "$output" | tr '\n\r\t' '   ' | tr -d '[:cntrl:]' | sed 's/"/\\"/g')
+    safe_loginURL=$(echo "$loginURL" | tr '\n\r\t' '   ' | tr -d '[:cntrl:]' | sed 's/"/\\"/g')
     echo "{\"running\": $running, \"output\": \"$safe_output\", \"loginURL\": \"$safe_loginURL\"}"
 }
 
