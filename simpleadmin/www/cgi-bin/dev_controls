@@ -57,9 +57,10 @@ tailscale_status() {
       running=true
       loginURL=""
     fi
-    # Escape any quotes in the output and loginURL for valid JSON.
-    safe_output=$(echo "$output" | sed 's/"/\\"/g')
-    safe_loginURL=$(echo "$loginURL" | sed 's/"/\\"/g')
+
+    # Remove newline and carriage return characters and escape quotes.
+    safe_output=$(echo "$output" | tr '\n' ' ' | tr '\r' ' ' | sed 's/"/\\"/g')
+    safe_loginURL=$(echo "$loginURL" | tr '\n' ' ' | tr '\r' ' ' | sed 's/"/\\"/g')
     echo "{\"running\": $running, \"output\": \"$safe_output\", \"loginURL\": \"$safe_loginURL\"}"
 }
 
@@ -98,7 +99,6 @@ case "$ACTION" in
   "tailscale_up")
     output=$($SUDO $TAILSCALE up --accept-dns=false --reset 2>&1)
     sleep 1
-    # tailscale_status will pick up any login URL from the output if present.
     tailscale_json=$(tailscale_status)
     echo "{\"status\": \"Tailscale up\", \"tailscale\": $tailscale_json}"
     ;;
