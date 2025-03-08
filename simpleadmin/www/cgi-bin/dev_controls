@@ -15,7 +15,7 @@ if [ -n "$QUERY_STRING" ]; then
   done
 fi
 
-# If method is POST and action==upload_key, read key data from STDIN.
+# If POST and action==upload_key, read key data from STDIN.
 uploaded_key=""
 if [ "$REQUEST_METHOD" = "POST" ] && [ "$action" = "upload_key" ]; then
   read -N "${CONTENT_LENGTH:-0}" uploaded_key
@@ -51,22 +51,39 @@ get_ssh_status() {
   echo "{\"enabled\": $enabled, \"port\": \"$ssh_port\"}"
 }
 
-# --- Helper: Sanitize output (replace newlines, carriage returns and escape quotes) ---
+# --- Helper: Sanitize output (replace newlines/carriage returns and escape quotes) ---
 sanitize() {
   echo "$1" | tr '\n\r' ' ' | sed 's/"/\\"/g'
 }
 
 # --- Helper: Get Tailscale status ---
 get_tailscale_status() {
-  # Attempt to use JSON output.
+  # First, check connectivity via tailscale ip -4.
+  ts_ip=$($SUDO $TAILSCALE ip -4 2>/dev/null | tr -d '[:space:]')
+  if [ -n "$ts_ip" ]; then
+    ip_connected=true
+  else
+    ip_connected=false
+  fi
+
+  # Now get detailed status as JSON.
   ts_json=$($SUDO $TAILSCALE status --json 2>/dev/null)
-  first_char=$(echo "$ts_json" | cut -c1)
-  if [ "$first_char" = "{" ]; then
-    backendState=$(echo "$ts_json" | sed -n 's/.*"BackendState":"\([^"]*\)".*/\1/p')
+  safe_output=$(sanitize "$ts_json")
+  if [ "$(echo "$ts_json" | cut -c1)" = "{" ]; then
+    # Use jq if available.
+    if command -v jq >/dev/null 2>&1; then
+      backendState=$(echo "$ts_json" | jq -r '.BackendState')
+      ts_peers=$(echo "$ts_json" | jq '[.Peer[] | {name:.HostName, ip:.TailAddr}]')
+      ts_loginURL=$(echo "$ts_json" | jq -r '.AuthURL // ""')
+    else
+      backendState=$(echo "$ts_json" | sed -n 's/.*"BackendState":"\([^"]*\)".*/\1/p')
+      ts_peers="[]"
+      ts_loginURL=$(echo "$ts_json" | sed -n 's/.*"AuthURL":"\([^"]*\)".*/\1/p')
+    fi
+
     if [ "$backendState" = "NeedsLogin" ]; then
       connected=false
       statusText="Needs Login"
-      ts_loginURL=$(echo "$ts_json" | sed -n 's/.*"AuthURL":"\([^"]*\)".*/\1/p')
       ts_loginURL=$(sanitize "$ts_loginURL")
     elif [ "$backendState" = "Running" ]; then
       connected=true
@@ -77,15 +94,8 @@ get_tailscale_status() {
       statusText="$backendState"
       ts_loginURL=""
     fi
-    safe_output=$(sanitize "$ts_json")
-    # Extract peers using jq if available.
-    if command -v jq >/dev/null 2>&1; then
-      ts_peers=$(echo "$ts_json" | jq '[.Peer[] | {name:.HostName, ip:.TailAddr}]')
-    else
-      ts_peers="[]"
-    fi
   else
-    # Fallback to plain text.
+    # Fallback to text parsing.
     ts_text=$($SUDO $TAILSCALE status 2>&1)
     safe_output=$(sanitize "$ts_text")
     if echo "$ts_text" | grep -q "Login URL:"; then
@@ -105,6 +115,13 @@ get_tailscale_status() {
     fi
     ts_peers="[]"
   fi
+
+  # Final check: if no Tailscale IP from tailscale ip -4, mark as disconnected.
+  if ! $ip_connected; then
+    connected=false
+    statusText="Disconnected"
+  fi
+
   echo "{\"connected\": $connected, \"statusText\": \"$statusText\", \"loginURL\": \"$ts_loginURL\", \"output\": \"$safe_output\", \"peers\": $ts_peers}"
 }
 
@@ -177,10 +194,10 @@ case "$action" in
     ;;
   "ssh_change_port")
     if [ -n "$param" ]; then
-      if $SUDO grep -qE '^[[:space:]]*Port ' /etc/ssh/sshd_config; then
+      if grep -qE '^[[:space:]]*Port ' /etc/ssh/sshd_config; then
         $SUDO sed -i -E "s/^[#[:space:]]*Port .*/Port $param/" /etc/ssh/sshd_config
       else
-        $SUDO echo "Port $param" >> /etc/ssh/sshd_config
+        $SUDO sh -c "echo 'Port $param' >> /etc/ssh/sshd_config"
       fi
       if ! $SUDO $SYSTEMCTL restart sshd 2>/dev/null; then
         if ! service sshd restart 2>/dev/null; then
@@ -224,7 +241,7 @@ case "$action" in
     echo "{\"status\": \"Tailscale up\", \"tailscale\": $ts_json}"
     ;;
   "tailscale_login")
-    # Force reauthentication to get a fresh AuthURL.
+    # Force reauth to generate a fresh AuthURL.
     TS_OUT=$($SUDO $TAILSCALE up --force-reauth --json 2>&1)
     sleep 1
     ts_json=$(get_tailscale_status)
@@ -238,13 +255,13 @@ case "$action" in
     ;;
   "tailscale_down")
     TS_OUT=$($SUDO $TAILSCALE down 2>&1)
-    sleep 1
+    sleep 2
     ts_json=$(get_tailscale_status)
     echo "{\"status\": \"Tailscale down\", \"tailscale\": $ts_json}"
     ;;
   "tailscale_logout")
     TS_OUT=$($SUDO $TAILSCALE logout 2>&1)
-    sleep 1
+    sleep 2
     ts_json=$(get_tailscale_status)
     echo "{\"status\": \"Tailscale logged out\", \"tailscale\": $ts_json}"
     ;;

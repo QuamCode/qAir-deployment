@@ -14,6 +14,7 @@
       .btn-group { margin-bottom: 1rem; }
       textarea { resize: none; }
       #peerGraph { text-align: center; margin-top: 1em; }
+      #noPeers { text-align: center; font-style: italic; color: #888; }
     </style>
   </head>
   <body>
@@ -131,22 +132,18 @@
                   </template>
                 </p>
                 <div class="btn-group" role="group" x-show="!tailscaleStatus.connected">
-                  <button class="btn btn-success" 
-                    @click="runCommand('tailscale_up')">Tailscale Up</button>
-                  <button class="btn btn-info" 
-                    @click="runCommand('tailscale_up_ssh')">Up with SSH</button>
-                  <button class="btn btn-warning" 
-                    @click="runCommand('tailscale_login')">Login</button>
+                  <button class="btn btn-success" @click="runCommand('tailscale_up')">Tailscale Up</button>
+                  <button class="btn btn-info" @click="runCommand('tailscale_up_ssh')">Up with SSH</button>
+                  <button class="btn btn-warning" @click="runCommand('tailscale_login')">Login</button>
                 </div>
                 <div class="btn-group" role="group" x-show="tailscaleStatus.connected">
-                  <button class="btn btn-warning" 
-                    @click="runCommand('tailscale_down')">Tailscale Down</button>
-                  <button class="btn btn-danger" 
-                    @click="runCommand('tailscale_logout')">Logout</button>
+                  <button class="btn btn-warning" @click="runCommand('tailscale_down')">Tailscale Down</button>
+                  <button class="btn btn-danger" @click="runCommand('tailscale_logout')">Logout</button>
                 </div>
                 <!-- Peer Graph -->
                 <div id="peerGraph" x-show="tailscaleStatus.connected">
                   <canvas id="graphCanvas" width="250" height="250"></canvas>
+                  <div id="noPeers" x-show="tailscaleStatus.peers.length === 0">No peers connected</div>
                 </div>
               </div>
               <div class="card-footer">
@@ -184,7 +181,7 @@
           newSshPort: "",
           logOutput: "",
     
-          // Run a command via CGI.
+          // Execute a command via the CGI script.
           runCommand(action, param = null) {
             let url = '/cgi-bin/dev_controls?action=' + action;
             if (param !== null) {
@@ -205,7 +202,7 @@
               });
           },
     
-          // Fetch status for SSH and Tailscale.
+          // Fetch current status.
           fetchAllStatus() {
             fetch('/cgi-bin/dev_controls?action=all_status')
               .then(response => response.json())
@@ -253,7 +250,7 @@
             }
           },
     
-          // Initialize: poll status and fetch keys every 5 seconds.
+          // Initialize: poll status and keys every 5 seconds.
           init() {
             this.fetchAllStatus();
             this.fetchKeys();
@@ -287,14 +284,14 @@
             }
           },
     
-          // Draw a simple peer graph on a canvas.
+          // Draw peer graph.
           drawPeerGraph() {
             const canvas = document.getElementById('graphCanvas');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             const w = canvas.width, h = canvas.height;
             ctx.clearRect(0, 0, w, h);
-            // Draw central node ("You")
+            // Draw central node.
             const cx = w / 2, cy = h / 2;
             ctx.fillStyle = "#4e79a7";
             ctx.beginPath();
@@ -304,12 +301,12 @@
             ctx.font = "12px sans-serif";
             ctx.textAlign = "center";
             ctx.fillText("You", cx, cy - 20);
-            // Draw peers around in a circle.
-            const count = this.tailscaleStatus.peers.length;
-            if (count === 0) return;
+            // Draw peers.
+            const peers = this.tailscaleStatus.peers;
+            if (peers.length === 0) return;
             const r = Math.min(cx, cy) - 30;
-            for (let i = 0; i < count; i++) {
-              const angle = (2 * Math.PI / count) * i;
+            for (let i = 0; i < peers.length; i++) {
+              const angle = (2 * Math.PI / peers.length) * i;
               const x = cx + r * Math.cos(angle);
               const y = cy + r * Math.sin(angle);
               ctx.fillStyle = "#59a14f";
@@ -321,7 +318,7 @@
               ctx.moveTo(cx, cy);
               ctx.lineTo(x, y);
               ctx.stroke();
-              const label = this.tailscaleStatus.peers[i].name || this.tailscaleStatus.peers[i].ip;
+              const label = peers[i].name || peers[i].ip;
               ctx.fillStyle = "#000";
               ctx.fillText(label, x, y - 15);
             }
