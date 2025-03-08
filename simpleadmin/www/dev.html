@@ -125,26 +125,17 @@
                     </span>
                   </template>
                 </p>
-                <!-- Power controls: Up/Down -->
-                <div class="btn-group btn-group-sm" role="group">
-                  <button class="btn btn-success" 
-                    @click="runCommand('tailscale_up')" 
-                    :disabled="tailscaleStatus.connected">Up</button>
-                  <button class="btn btn-info" 
-                    @click="runCommand('tailscale_up_ssh')" 
-                    :disabled="tailscaleStatus.connected">Up with SSH</button>
-                  <button class="btn btn-warning" 
-                    @click="runCommand('tailscale_down')" 
-                    :disabled="!tailscaleStatus.connected">Down</button>
-                </div>
-                <!-- Authentication controls: Login/Logout -->
-                <div class="btn-group btn-group-sm" role="group" style="margin-top: 0.5rem;">
-                  <button class="btn btn-warning" 
-                    @click="runCommand('tailscale_login')" 
-                    :disabled="tailscaleStatus.connected">Login</button>
-                  <button class="btn btn-danger" 
-                    @click="runCommand('tailscale_logout')" 
-                    :disabled="!tailscaleStatus.connected">Logout</button>
+                <!-- Button groups: Power and Auth -->
+                <div class="d-flex flex-wrap gap-2">
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-success" @click="runCommand('tailscale_up')" :disabled="tailscaleStatus.connected">Up</button>
+                    <button class="btn btn-info" @click="runCommand('tailscale_up_ssh')" :disabled="tailscaleStatus.connected">Up with SSH</button>
+                    <button class="btn btn-warning" @click="runCommand('tailscale_down')" :disabled="!tailscaleStatus.connected">Down</button>
+                  </div>
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-warning" @click="runCommand('tailscale_login')" :disabled="tailscaleStatus.connected">Login</button>
+                    <button class="btn btn-danger" @click="runCommand('tailscale_logout')" :disabled="!tailscaleStatus.connected">Logout</button>
+                  </div>
                 </div>
                 <!-- Peer Graph and Tooltip -->
                 <div id="peerGraph" x-show="tailscaleStatus.connected" style="position:relative; margin-top:1rem;">
@@ -289,25 +280,21 @@
               const y = cy + r * Math.sin(angle);
               this.peerNodes.push({ x, y, data: peers[i] });
     
-              // Node circle: green if online, red if offline.
               ctx.fillStyle = peers[i].online ? "#59a14f" : "#d9534f";
               ctx.beginPath();
               ctx.arc(x, y, 10, 0, 2 * Math.PI);
               ctx.fill();
     
-              // Connecting line.
               ctx.strokeStyle = "#999";
               ctx.beginPath();
               ctx.moveTo(cx, cy);
               ctx.lineTo(x, y);
               ctx.stroke();
     
-              // Label.
               ctx.fillStyle = "#000";
               ctx.fillText(peers[i].name, x, y - 15);
             }
     
-            // Setup persistent tooltip on click.
             canvas.onclick = (e) => {
               const rect = canvas.getBoundingClientRect();
               const mx = e.clientX - rect.left;
