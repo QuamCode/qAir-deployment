@@ -221,9 +221,6 @@
                 if (data.tailscale) {
                   this.tailscaleStatus = data.tailscale;
                   this.drawPeerGraph();
-                  if (this.tailscaleStatus.loginURL) {
-                    alert("Tailscale login required:\n" + this.tailscaleStatus.loginURL);
-                  }
                 }
               })
               .catch(error => {
