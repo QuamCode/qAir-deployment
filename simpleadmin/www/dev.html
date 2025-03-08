@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>qAirWave - Developer Page</title>
+    <!-- Optionally include Fira Code from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css" />
     <link rel="stylesheet" href="css/bootstrap.min.css" />
     <link rel="simpleadmin-logo" href="favicon.ico" />
@@ -16,19 +18,20 @@
       .btn-sm { font-size: 0.8rem; padding: 0.25rem 0.5rem; }
       textarea { resize: none; }
       /* Graph container styling */
-      #graphContainer { width: 250px; height: 250px; margin: 1rem auto; border: 1px solid #ddd; }
+      #graphContainer { width: 400px; height: 300px; margin: 1rem auto; border: 1px solid #ddd; }
       /* Tooltip styling */
       #tooltip {
         position: absolute;
         background: rgba(255,255,255,0.95);
         border: 1px solid #ccc;
         padding: 8px;
-        font-size: 12px;
+        font-size: 13px;
+        font-family: "Fira Code", monospace;
         border-radius: 4px;
         box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
         display: none;
         z-index: 100;
-        max-width: 220px;
+        max-width: 250px;
       }
       #tooltip a { color: #337ab7; text-decoration: none; }
       #tooltip a:hover { text-decoration: underline; }
@@ -119,8 +122,7 @@
               <div class="card-body">
                 <p>
                   <strong>Status:</strong> 
-                  <span x-text="tailscaleStatus.connected ? 'Running' : tailscaleStatus.statusText"></span>
-                  <br />
+                  <span x-text="tailscaleStatus.connected ? 'Running' : tailscaleStatus.statusText"></span><br>
                   <template x-if="tailscaleStatus.loginURL">
                     <span>
                       <strong>Login URL:</strong>
@@ -132,29 +134,19 @@
                 <div class="d-flex flex-wrap gap-2">
                   <!-- Power controls -->
                   <div class="btn-group btn-group-sm" role="group">
-                    <button class="btn btn-success" 
-                      @click="runCommand('tailscale_up')" 
-                      :disabled="tailscaleStatus.connected">Up</button>
-                    <button class="btn btn-info" 
-                      @click="runCommand('tailscale_up_ssh')" 
-                      :disabled="tailscaleStatus.connected">Up with SSH</button>
-                    <button class="btn btn-warning" 
-                      @click="runCommand('tailscale_down')" 
-                      :disabled="!tailscaleStatus.connected">Down</button>
+                    <button class="btn btn-success" @click="runCommand('tailscale_up')" :disabled="tailscaleStatus.connected">Up</button>
+                    <button class="btn btn-info" @click="runCommand('tailscale_up_ssh')" :disabled="tailscaleStatus.connected">Up with SSH</button>
+                    <button class="btn btn-warning" @click="runCommand('tailscale_down')" :disabled="!tailscaleStatus.connected">Down</button>
                   </div>
                   <!-- Authentication controls -->
                   <div class="btn-group btn-group-sm" role="group">
-                    <button class="btn btn-warning" 
-                      @click="runCommand('tailscale_login')" 
-                      :disabled="tailscaleStatus.connected">Login</button>
-                    <button class="btn btn-danger" 
-                      @click="runCommand('tailscale_logout')" 
-                      :disabled="!tailscaleStatus.connected">Logout</button>
+                    <button class="btn btn-warning" @click="runCommand('tailscale_login')" :disabled="tailscaleStatus.connected">Login</button>
+                    <button class="btn btn-danger" @click="runCommand('tailscale_logout')" :disabled="!tailscaleStatus.connected">Logout</button>
                   </div>
                 </div>
-                <!-- Peer Graph and Tooltip -->
+                <!-- Peer Graph -->
                 <div id="peerGraph" x-show="tailscaleStatus.connected" style="position:relative; margin-top:1rem;">
-                  <div id="graphContainer" style="width:250px; height:250px; border:1px solid #ddd;"></div>
+                  <div id="graphContainer" style="width:400px; height:300px; border:1px solid #ddd;"></div>
                   <div id="tooltip"></div>
                 </div>
               </div>
@@ -179,7 +171,7 @@
     </main>
     
     <script src="js/dark-mode.js"></script>
-    <!-- Include Cytoscape.js for dynamic node graph -->
+    <!-- Include Cytoscape.js for interactive graph -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.0/cytoscape.min.js"></script>
     <script>
       function devControls() {
@@ -190,6 +182,7 @@
           newSshPort: "",
           logOutput: "",
           cy: null,
+          lastPeersJson: "",
     
           runCommand(action, param = null) {
             let url = '/cgi-bin/dev_controls?action=' + action;
@@ -209,9 +202,14 @@
               .then(response => response.json())
               .then(data => {
                 if (data.ssh) { this.sshStatus = data.ssh; }
-                if (data.tailscale) { 
-                  this.tailscaleStatus = data.tailscale; 
-                  this.drawCytoscapeGraph();
+                if (data.tailscale) {
+                  // Only update graph if peer data changed.
+                  const newPeersJson = JSON.stringify(data.tailscale.peers);
+                  this.tailscaleStatus = data.tailscale;
+                  if(newPeersJson !== this.lastPeersJson) {
+                    this.lastPeersJson = newPeersJson;
+                    this.drawCytoscapeGraph();
+                  }
                 }
               })
               .catch(error => { console.error("Status fetch error:", error); });
@@ -263,24 +261,33 @@
             }
           },
     
-          // Build graph elements for Cytoscape.
           getGraphElements() {
             let elements = [];
-            // Central node "You"
+            // Add central node "You"
             elements.push({ data: { id: 'self', label: 'You' } });
-            // Peer nodes and edges.
+            // Add peer nodes and edges.
             this.tailscaleStatus.peers.forEach(peer => {
-              elements.push({ data: { id: peer.id, label: peer.name, os: peer.os, online: peer.online, ips: peer.tailscale_ips.join(", ") } });
-              elements.push({ data: { id: 'edge-' + peer.id, source: 'self', target: peer.id } });
+              elements.push({
+                data: {
+                  id: peer.id,
+                  label: peer.name,
+                  os: peer.os,
+                  online: peer.online,
+                  ips: peer.tailscale_ips.join(", ")
+                }
+              });
+              elements.push({
+                data: { id: 'edge-' + peer.id, source: 'self', target: peer.id }
+              });
             });
             return elements;
           },
     
-          // Draw the peer graph using Cytoscape.js.
           drawCytoscapeGraph() {
+            const container = document.getElementById('graphContainer');
             if (this.cy) { this.cy.destroy(); }
             this.cy = cytoscape({
-              container: document.getElementById('graphContainer'),
+              container: container,
               elements: this.getGraphElements(),
               style: [
                 {
@@ -289,12 +296,14 @@
                     'label': 'data(label)',
                     'text-valign': 'center',
                     'color': '#000',
+                    'font-family': '"Fira Code", monospace',
                     'background-color': function(ele) {
-                      return ele.data('online') === "true" || ele.data('online') === true ? "#59a14f" : "#d9534f";
+                      return ele.data('id') === "self" ? "#007bff" :
+                             (ele.data('online') === "true" || ele.data('online') === true ? "#59a14f" : "#d9534f");
                     },
-                    'width': 40,
-                    'height': 40,
-                    'font-size': '10px'
+                    'width': 50,
+                    'height': 50,
+                    'font-size': '14px'
                   }
                 },
                 {
@@ -307,7 +316,9 @@
               ],
               layout: {
                 name: 'cose',
-                animate: true
+                padding: 50,
+                animate: true,
+                animationDuration: 500
               }
             });
     
@@ -327,7 +338,7 @@
               tooltip.innerHTML = content;
             });
     
-            // Hide tooltip if click outside a node.
+            // Hide tooltip when clicking outside.
             document.addEventListener('click', (e) => {
               const tooltip = document.getElementById('tooltip');
               const container = document.getElementById('graphContainer');
