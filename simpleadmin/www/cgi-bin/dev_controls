@@ -31,6 +31,7 @@ echo ""
 
 # --- Define paths (adjust as needed) ---
 SUDO="/opt/bin/sudo"
+JQBINARY="/opt/bin/jq"
 SYSTEMCTL="/bin/systemctl"
 TAILSCALE_DIR="/usrdata/tailscale"
 TAILSCALE="$TAILSCALE_DIR/tailscale"
@@ -91,8 +92,8 @@ get_tailscale_status() {
       ts_loginURL=""
     fi
     safe_output=$(sanitize "$ts_json")
-    if command -v jq >/dev/null 2>&1; then
-      ts_peers=$(echo "$ts_json" | jq '[.Peer[] | {name:.HostName, ip:.TailAddr}]')
+    if command -v $JQBINARY >/dev/null 2>&1; then
+      ts_peers=$(echo "$ts_json" | $JQBINARY '[.Peer[] | {name:.HostName, ip:.TailAddr}]')
     else
       ts_peers="[]"
     fi
