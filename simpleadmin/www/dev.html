@@ -11,7 +11,8 @@
     <script src="js/alpinejs.min.js" defer></script>
     <style>
       .card { margin-bottom: 1rem; }
-      .btn-group { margin-bottom: 1rem; }
+      .btn-group { margin-bottom: 0.5rem; }
+      .btn-sm { font-size: 0.8rem; padding: 0.25rem 0.5rem; }
       textarea { resize: none; }
       #peerGraph { text-align: center; margin-top: 1em; position: relative; }
       /* Tooltip styling */
@@ -25,7 +26,7 @@
         box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
         display: none;
         z-index: 100;
-        max-width: 200px;
+        max-width: 220px;
       }
       #tooltip a { color: #337ab7; text-decoration: none; }
       #tooltip a:hover { text-decoration: underline; }
@@ -124,26 +125,29 @@
                     </span>
                   </template>
                 </p>
-                <!-- Two groups of buttons side by side -->
-                <div class="d-flex flex-wrap gap-2">
-                  <!-- Buttons for when Tailscale is not running -->
-                  <template x-if="!tailscaleStatus.connected">
-                    <div class="btn-group btn-group-sm" role="group">
-                      <button class="btn btn-success" @click="runCommand('tailscale_up')" :disabled="tailscaleStatus.statusText==='Needs Login'">Up</button>
-                      <button class="btn btn-info" @click="runCommand('tailscale_up_ssh')" :disabled="tailscaleStatus.statusText==='Needs Login'">Up with SSH</button>
-                      <button class="btn btn-warning" @click="runCommand('tailscale_login')" :disabled="tailscaleStatus.statusText!=='Needs Login'">Login</button>
-                    </div>
-                  </template>
-                  <!-- Buttons for when Tailscale is running -->
-                  <template x-if="tailscaleStatus.connected">
-                    <div class="btn-group btn-group-sm" role="group">
-                      <button class="btn btn-warning" @click="runCommand('tailscale_down')">Down</button>
-                      <button class="btn btn-danger" @click="runCommand('tailscale_logout')">Logout</button>
-                    </div>
-                  </template>
+                <!-- Power controls: Up/Down -->
+                <div class="btn-group btn-group-sm" role="group">
+                  <button class="btn btn-success" 
+                    @click="runCommand('tailscale_up')" 
+                    :disabled="tailscaleStatus.connected">Up</button>
+                  <button class="btn btn-info" 
+                    @click="runCommand('tailscale_up_ssh')" 
+                    :disabled="tailscaleStatus.connected">Up with SSH</button>
+                  <button class="btn btn-warning" 
+                    @click="runCommand('tailscale_down')" 
+                    :disabled="!tailscaleStatus.connected">Down</button>
+                </div>
+                <!-- Authentication controls: Login/Logout -->
+                <div class="btn-group btn-group-sm" role="group" style="margin-top: 0.5rem;">
+                  <button class="btn btn-warning" 
+                    @click="runCommand('tailscale_login')" 
+                    :disabled="tailscaleStatus.connected">Login</button>
+                  <button class="btn btn-danger" 
+                    @click="runCommand('tailscale_logout')" 
+                    :disabled="!tailscaleStatus.connected">Logout</button>
                 </div>
                 <!-- Peer Graph and Tooltip -->
-                <div id="peerGraph" x-show="tailscaleStatus.connected" style="position:relative;">
+                <div id="peerGraph" x-show="tailscaleStatus.connected" style="position:relative; margin-top:1rem;">
                   <canvas id="graphCanvas" width="250" height="250"></canvas>
                   <div id="tooltip"></div>
                 </div>
@@ -167,6 +171,7 @@
         </div>
       </div>
     </main>
+    
     <script src="js/dark-mode.js"></script>
     <script>
       function devControls() {
@@ -284,23 +289,25 @@
               const y = cy + r * Math.sin(angle);
               this.peerNodes.push({ x, y, data: peers[i] });
     
-              // Draw node circle: green if online, red if offline.
+              // Node circle: green if online, red if offline.
               ctx.fillStyle = peers[i].online ? "#59a14f" : "#d9534f";
               ctx.beginPath();
               ctx.arc(x, y, 10, 0, 2 * Math.PI);
               ctx.fill();
-              // Draw connecting line.
+    
+              // Connecting line.
               ctx.strokeStyle = "#999";
               ctx.beginPath();
               ctx.moveTo(cx, cy);
               ctx.lineTo(x, y);
               ctx.stroke();
-              // Draw label.
+    
+              // Label.
               ctx.fillStyle = "#000";
               ctx.fillText(peers[i].name, x, y - 15);
             }
     
-            // Setup persistent tooltip on node click.
+            // Setup persistent tooltip on click.
             canvas.onclick = (e) => {
               const rect = canvas.getBoundingClientRect();
               const mx = e.clientX - rect.left;
@@ -330,7 +337,6 @@
               }
             };
     
-            // Persist tooltip on click outside the canvas.
             document.addEventListener('click', (e) => {
               if (!canvas.contains(e.target) && !tooltip.contains(e.target)) {
                 tooltip.style.display = "none";
