@@ -132,22 +132,17 @@
                 </p>
                 <div class="btn-group" role="group" x-show="!tailscaleStatus.connected">
                   <button class="btn btn-success" 
-                    @click="runCommand('tailscale_up')" 
-                    >Tailscale Up</button>
+                    @click="runCommand('tailscale_up')">Tailscale Up</button>
                   <button class="btn btn-info" 
-                    @click="runCommand('tailscale_up_ssh')" 
-                    >Up with SSH</button>
+                    @click="runCommand('tailscale_up_ssh')">Up with SSH</button>
                   <button class="btn btn-warning" 
-                    @click="runCommand('tailscale_login')" 
-                    >Login</button>
+                    @click="runCommand('tailscale_login')">Login</button>
                 </div>
                 <div class="btn-group" role="group" x-show="tailscaleStatus.connected">
                   <button class="btn btn-warning" 
-                    @click="runCommand('tailscale_down')" 
-                    >Tailscale Down</button>
+                    @click="runCommand('tailscale_down')">Tailscale Down</button>
                   <button class="btn btn-danger" 
-                    @click="runCommand('tailscale_logout')" 
-                    >Logout</button>
+                    @click="runCommand('tailscale_logout')">Logout</button>
                 </div>
                 <!-- Peer Graph -->
                 <div id="peerGraph" x-show="tailscaleStatus.connected">
@@ -189,7 +184,7 @@
           newSshPort: "",
           logOutput: "",
     
-          // Run a command by calling the CGI script.
+          // Run a command via CGI.
           runCommand(action, param = null) {
             let url = '/cgi-bin/dev_controls?action=' + action;
             if (param !== null) {
@@ -210,7 +205,7 @@
               });
           },
     
-          // Fetch SSH and Tailscale status.
+          // Fetch status for SSH and Tailscale.
           fetchAllStatus() {
             fetch('/cgi-bin/dev_controls?action=all_status')
               .then(response => response.json())
@@ -228,7 +223,7 @@
               });
           },
     
-          // Fetch list of authorized SSH keys.
+          // Fetch authorized SSH keys.
           fetchKeys() {
             fetch('/cgi-bin/dev_controls?action=list_keys')
               .then(response => response.json())
@@ -242,7 +237,7 @@
               });
           },
     
-          // Remove a key by index.
+          // Remove a key.
           removeKey(index) {
             if (confirm("Remove key at index " + index + "?")) {
               fetch('/cgi-bin/dev_controls?action=remove_key&port=' + index)
@@ -258,7 +253,7 @@
             }
           },
     
-          // Initialize: poll status every 5 seconds and fetch keys.
+          // Initialize: poll status and fetch keys every 5 seconds.
           init() {
             this.fetchAllStatus();
             this.fetchKeys();
