@@ -92,6 +92,9 @@ get_tailscale_status() {
       ts_loginURL=""
     fi
       ts_peers=$(echo "$ts_json" | $JQBINARY '[.Peer[] | {id: .ID, name: .HostName, online: .Online, tailscale_ips: .TailscaleIPs, allowed_ips: .AllowedIPs, os: .OS, last_seen: .LastSeen}]')
+      if [ -z "$ts_peers" ]; then
+        ts_peers="[]"
+      fi
   else
     # Fallback to text output.
     ts_text=$($SUDO $TAILSCALE status 2>/dev/null)
@@ -117,6 +120,9 @@ get_tailscale_status() {
       ts_loginURL=""
     fi
       ts_peers=$(echo "$ts_json" | $JQBINARY '[.Peer[] | {id: .ID, name: .HostName, online: .Online, tailscale_ips: .TailscaleIPs, allowed_ips: .AllowedIPs, os: .OS, last_seen: .LastSeen}]')
+      if [ -z "$ts_peers" ]; then
+        ts_peers="[]"
+      fi
   fi
 
   echo "{\"connected\": $connected, \"statusText\": \"$statusText\", \"loginURL\": \"$ts_loginURL\", \"output\": \"$safe_output\", \"peers\": $ts_peers}"
