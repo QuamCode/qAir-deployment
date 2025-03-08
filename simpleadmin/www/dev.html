@@ -14,15 +14,21 @@
       .btn-group { margin-bottom: 1rem; }
       textarea { resize: none; }
       #peerGraph { text-align: center; margin-top: 1em; position: relative; }
+      /* Tooltip styling */
       #tooltip {
         position: absolute;
         background: rgba(255,255,255,0.95);
         border: 1px solid #ccc;
-        padding: 5px;
+        padding: 8px;
         font-size: 12px;
+        border-radius: 4px;
+        box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
         display: none;
-        z-index: 10;
+        z-index: 100;
+        max-width: 200px;
       }
+      #tooltip a { color: #337ab7; text-decoration: none; }
+      #tooltip a:hover { text-decoration: underline; }
     </style>
   </head>
   <body>
@@ -57,52 +63,36 @@
           <!-- SSH Controls -->
           <div class="col-md-6">
             <div class="card">
-              <div class="card-header">
-                <h5>SSH Controls</h5>
-              </div>
+              <div class="card-header"><h5>SSH Controls</h5></div>
               <div class="card-body">
                 <p>
-                  <strong>Status:</strong>
-                  <span x-text="sshStatus.enabled ? 'Running' : 'Stopped'"></span>
-                  <br />
-                  <strong>Current Port:</strong>
-                  <span x-text="sshStatus.port"></span>
+                  <strong>Status:</strong> <span x-text="sshStatus.enabled ? 'Running' : 'Stopped'"></span><br>
+                  <strong>Current Port:</strong> <span x-text="sshStatus.port"></span>
                 </p>
-                <div class="btn-group" role="group">
-                  <button class="btn btn-primary" 
-                    @click="runCommand('ssh_disable')" 
-                    :disabled="!sshStatus.enabled">Disable SSH</button>
-                  <button class="btn btn-success" 
-                    @click="runCommand('ssh_enable')" 
-                    :disabled="sshStatus.enabled">Enable SSH</button>
+                <div class="btn-group btn-group-sm" role="group">
+                  <button class="btn btn-primary" @click="runCommand('ssh_disable')" :disabled="!sshStatus.enabled">Disable SSH</button>
+                  <button class="btn btn-success" @click="runCommand('ssh_enable')" :disabled="sshStatus.enabled">Enable SSH</button>
                 </div>
-                <div class="input-group mb-3">
+                <div class="input-group input-group-sm mb-3">
                   <input type="number" class="form-control" placeholder="New SSH Port" x-model="newSshPort" />
-                  <button class="btn btn-secondary" 
-                    @click="runCommand('ssh_change_port', newSshPort)">
-                    Change Port
-                  </button>
+                  <button class="btn btn-secondary" @click="runCommand('ssh_change_port', newSshPort)">Change Port</button>
                 </div>
               </div>
-              <div class="card-footer">
-                Manage SSH access and port configuration.
-              </div>
+              <div class="card-footer">Manage SSH access and port configuration.</div>
             </div>
           </div>
     
           <!-- SSH Key Management -->
           <div class="col-md-6">
             <div class="card">
-              <div class="card-header">
-                <h5>SSH Key Management</h5>
-              </div>
+              <div class="card-header"><h5>SSH Key Management</h5></div>
               <div class="card-body">
-                <div class="input-group mb-3">
+                <div class="input-group input-group-sm mb-3">
                   <input type="file" id="keyFile" accept=".pub,.txt" class="form-control" />
                   <button class="btn btn-secondary" @click="uploadKey">Upload Key</button>
                 </div>
                 <div>
-                  <button class="btn btn-info mb-2" @click="fetchKeys">List Authorized Keys</button>
+                  <button class="btn btn-info btn-sm mb-2" @click="fetchKeys">List Authorized Keys</button>
                   <ul>
                     <template x-for="(key, index) in sshKeys" :key="index">
                       <li>
@@ -113,9 +103,7 @@
                   </ul>
                 </div>
               </div>
-              <div class="card-footer">
-                Upload new keys or remove existing SSH public keys.
-              </div>
+              <div class="card-footer">Upload new keys or remove existing SSH public keys.</div>
             </div>
           </div>
         </div>
@@ -124,14 +112,11 @@
         <div class="row">
           <div class="col-md-6">
             <div class="card">
-              <div class="card-header">
-                <h5>Tailscale Controls</h5>
-              </div>
+              <div class="card-header"><h5>Tailscale Controls</h5></div>
               <div class="card-body">
                 <p>
                   <strong>Status:</strong>
-                  <span x-text="tailscaleStatus.connected ? 'Running' : tailscaleStatus.statusText"></span>
-                  <br />
+                  <span x-text="tailscaleStatus.connected ? 'Running' : tailscaleStatus.statusText"></span><br>
                   <template x-if="tailscaleStatus.loginURL">
                     <span>
                       <strong>Login URL:</strong>
@@ -139,24 +124,31 @@
                     </span>
                   </template>
                 </p>
-                <div class="btn-group" role="group" x-show="!tailscaleStatus.connected">
-                  <button class="btn btn-success" @click="runCommand('tailscale_up')">Tailscale Up</button>
-                  <button class="btn btn-info" @click="runCommand('tailscale_up_ssh')">Up with SSH</button>
-                  <button class="btn btn-warning" @click="runCommand('tailscale_login')">Login</button>
+                <!-- Two groups of buttons side by side -->
+                <div class="d-flex flex-wrap gap-2">
+                  <!-- Buttons for when Tailscale is not running -->
+                  <template x-if="!tailscaleStatus.connected">
+                    <div class="btn-group btn-group-sm" role="group">
+                      <button class="btn btn-success" @click="runCommand('tailscale_up')" :disabled="tailscaleStatus.statusText==='Needs Login'">Up</button>
+                      <button class="btn btn-info" @click="runCommand('tailscale_up_ssh')" :disabled="tailscaleStatus.statusText==='Needs Login'">Up with SSH</button>
+                      <button class="btn btn-warning" @click="runCommand('tailscale_login')" :disabled="tailscaleStatus.statusText!=='Needs Login'">Login</button>
+                    </div>
+                  </template>
+                  <!-- Buttons for when Tailscale is running -->
+                  <template x-if="tailscaleStatus.connected">
+                    <div class="btn-group btn-group-sm" role="group">
+                      <button class="btn btn-warning" @click="runCommand('tailscale_down')">Down</button>
+                      <button class="btn btn-danger" @click="runCommand('tailscale_logout')">Logout</button>
+                    </div>
+                  </template>
                 </div>
-                <div class="btn-group" role="group" x-show="tailscaleStatus.connected">
-                  <button class="btn btn-warning" @click="runCommand('tailscale_down')">Tailscale Down</button>
-                  <button class="btn btn-danger" @click="runCommand('tailscale_logout')">Logout</button>
-                </div>
-                <!-- Peer Graph -->
+                <!-- Peer Graph and Tooltip -->
                 <div id="peerGraph" x-show="tailscaleStatus.connected" style="position:relative;">
                   <canvas id="graphCanvas" width="250" height="250"></canvas>
-                  <div id="tooltip" style="display:none;"></div>
+                  <div id="tooltip"></div>
                 </div>
               </div>
-              <div class="card-footer">
-                Manage Tailscale connectivity and authentication.
-              </div>
+              <div class="card-footer">Manage Tailscale connectivity and authentication.</div>
             </div>
           </div>
         </div>
@@ -165,15 +157,11 @@
         <div class="row">
           <div class="col">
             <div class="card">
-              <div class="card-header">
-                <h5>Output Log</h5>
-              </div>
+              <div class="card-header"><h5>Output Log</h5></div>
               <div class="card-body">
                 <textarea class="form-control" rows="10" x-model="logOutput" readonly></textarea>
               </div>
-              <div class="card-footer">
-                Command responses and log output.
-              </div>
+              <div class="card-footer">Command responses and log output.</div>
             </div>
           </div>
         </div>
@@ -189,8 +177,8 @@
           newSshPort: "",
           logOutput: "",
           peerNodes: [],
+          selectedPeer: null,
     
-          // Execute a command via the CGI script.
           runCommand(action, param = null) {
             let url = '/cgi-bin/dev_controls?action=' + action;
             if (param !== null) {
@@ -211,65 +199,40 @@
               });
           },
     
-          // Fetch status for SSH and Tailscale.
           fetchAllStatus() {
             fetch('/cgi-bin/dev_controls?action=all_status')
               .then(response => response.json())
               .then(data => {
-                if (data.ssh) {
-                  this.sshStatus = data.ssh;
-                }
-                if (data.tailscale) {
-                  this.tailscaleStatus = data.tailscale;
-                  this.drawPeerGraph();
-                }
+                if (data.ssh) { this.sshStatus = data.ssh; }
+                if (data.tailscale) { this.tailscaleStatus = data.tailscale; this.drawPeerGraph(); }
               })
-              .catch(error => {
-                console.error("Status fetch error:", error);
-              });
+              .catch(error => { console.error("Status fetch error:", error); });
           },
     
-          // Fetch authorized SSH keys.
           fetchKeys() {
             fetch('/cgi-bin/dev_controls?action=list_keys')
               .then(response => response.json())
-              .then(data => {
-                if (data.keys) {
-                  this.sshKeys = data.keys;
-                }
-              })
-              .catch(error => {
-                console.error("Keys fetch error:", error);
-              });
+              .then(data => { if (data.keys) { this.sshKeys = data.keys; } })
+              .catch(error => { console.error("Keys fetch error:", error); });
           },
     
-          // Remove a key by index.
           removeKey(index) {
             if (confirm("Remove key at index " + index + "?")) {
               fetch('/cgi-bin/dev_controls?action=remove_key&port=' + index)
                 .then(response => response.json())
                 .then(data => {
-                  if (data.error) {
-                    alert("Error: " + data.error);
-                  } else {
-                    alert("Key removed.");
-                    this.fetchKeys();
-                  }
+                  if (data.error) { alert("Error: " + data.error); }
+                  else { alert("Key removed."); this.fetchKeys(); }
                 });
             }
           },
     
-          // Initialize: poll status and fetch keys every 5 seconds.
           init() {
             this.fetchAllStatus();
             this.fetchKeys();
-            setInterval(() => {
-              this.fetchAllStatus();
-              this.fetchKeys();
-            }, 5000);
+            setInterval(() => { this.fetchAllStatus(); this.fetchKeys(); }, 5000);
           },
     
-          // Upload an SSH public key.
           uploadKey() {
             const fileInput = document.getElementById('keyFile');
             if (fileInput.files.length > 0) {
@@ -280,8 +243,7 @@
                   method: 'POST',
                   headers: { 'Content-Type': 'text/plain' },
                   body: reader.result
-                })
-                .then(() => {
+                }).then(() => {
                   alert("SSH public key uploaded.");
                   this.fetchKeys();
                   this.fetchAllStatus();
@@ -293,9 +255,9 @@
             }
           },
     
-          // Draw a peer graph using the new peer data format.
           drawPeerGraph() {
             const canvas = document.getElementById('graphCanvas');
+            const tooltip = document.getElementById('tooltip');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             const w = canvas.width, h = canvas.height;
@@ -312,43 +274,34 @@
             ctx.textAlign = "center";
             ctx.fillText("You", cx, cy - 20);
     
-            // Prepare tooltip
-            const tooltip = document.getElementById("tooltip");
-            tooltip.style.display = "none";
-    
-            // Draw each peer node.
+            this.peerNodes = [];
             const peers = this.tailscaleStatus.peers;
             if (peers.length === 0) return;
             const r = Math.min(cx, cy) - 30;
-            // Store node positions for hit detection.
-            this.peerNodes = [];
             for (let i = 0; i < peers.length; i++) {
               const angle = (2 * Math.PI / peers.length) * i;
               const x = cx + r * Math.cos(angle);
               const y = cy + r * Math.sin(angle);
-              // Save node info for later (for tooltip)
-              this.peerNodes.push({x: x, y: y, data: peers[i]});
+              this.peerNodes.push({ x, y, data: peers[i] });
     
-              // Node circle: color based on online status.
+              // Draw node circle: green if online, red if offline.
               ctx.fillStyle = peers[i].online ? "#59a14f" : "#d9534f";
               ctx.beginPath();
               ctx.arc(x, y, 10, 0, 2 * Math.PI);
               ctx.fill();
-    
               // Draw connecting line.
               ctx.strokeStyle = "#999";
               ctx.beginPath();
               ctx.moveTo(cx, cy);
               ctx.lineTo(x, y);
               ctx.stroke();
-    
-              // Draw node label.
+              // Draw label.
               ctx.fillStyle = "#000";
               ctx.fillText(peers[i].name, x, y - 15);
             }
     
-            // Add mouse event for tooltip.
-            canvas.onmousemove = (e) => {
+            // Setup persistent tooltip on node click.
+            canvas.onclick = (e) => {
               const rect = canvas.getBoundingClientRect();
               const mx = e.clientX - rect.left;
               const my = e.clientY - rect.top;
@@ -356,25 +309,34 @@
               for (let node of this.peerNodes) {
                 const dx = mx - node.x;
                 const dy = my - node.y;
-                if (Math.sqrt(dx*dx+dy*dy) < 12) {
-                  // Show tooltip with IPs, OS, online status, and a link.
+                if (Math.sqrt(dx*dx + dy*dy) < 12) {
                   tooltip.style.display = "block";
                   tooltip.style.left = (node.x + rect.left + 15) + "px";
                   tooltip.style.top = (node.y + rect.top - 20) + "px";
-                  let tipContent = `<strong>${node.data.name}</strong><br>`;
-                  tipContent += `OS: ${node.data.os}<br>`;
-                  tipContent += `Online: ${node.data.online ? "Yes" : "No"}<br>`;
-                  tipContent += `IPs: ${node.data.tailscale_ips.join(", ")}<br>`;
-                  tipContent += `<a href="/node.html?id=${node.data.id}" target="_blank">Details</a>`;
-                  tooltip.innerHTML = tipContent;
+                  let content = `<strong>${node.data.name}</strong><br>`;
+                  content += `OS: ${node.data.os}<br>`;
+                  content += `Online: ${node.data.online ? "Yes" : "No"}<br>`;
+                  content += `IPs: ${node.data.tailscale_ips.join(", ")}<br>`;
+                  content += `<a href="/node.html?id=${node.data.id}" target="_blank">Details</a>`;
+                  tooltip.innerHTML = content;
+                  this.selectedPeer = node;
                   found = true;
                   break;
                 }
               }
               if (!found) {
                 tooltip.style.display = "none";
+                this.selectedPeer = null;
               }
             };
+    
+            // Persist tooltip on click outside the canvas.
+            document.addEventListener('click', (e) => {
+              if (!canvas.contains(e.target) && !tooltip.contains(e.target)) {
+                tooltip.style.display = "none";
+                this.selectedPeer = null;
+              }
+            });
           }
         };
       }
