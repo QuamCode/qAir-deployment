@@ -13,6 +13,7 @@
       .card { margin-bottom: 1rem; }
       .btn-group { margin-bottom: 1rem; }
       textarea { resize: none; }
+      #peerGraph { text-align: center; margin-top: 1em; }
     </style>
   </head>
   <body>
@@ -53,7 +54,7 @@
               <div class="card-body">
                 <p>
                   <strong>Status:</strong>
-                  <span x-text="sshStatus.running ? 'Running' : 'Stopped'"></span>
+                  <span x-text="sshStatus.enabled ? 'Running' : 'Stopped'"></span>
                   <br />
                   <strong>Current Port:</strong>
                   <span x-text="sshStatus.port"></span>
@@ -61,10 +62,10 @@
                 <div class="btn-group" role="group">
                   <button class="btn btn-primary" 
                     @click="runCommand('ssh_disable')" 
-                    :disabled="!sshStatus.running">Disable SSH</button>
+                    :disabled="!sshStatus.enabled">Disable SSH</button>
                   <button class="btn btn-success" 
                     @click="runCommand('ssh_enable')" 
-                    :disabled="sshStatus.running">Enable SSH</button>
+                    :disabled="sshStatus.enabled">Enable SSH</button>
                 </div>
                 <div class="input-group mb-3">
                   <input type="number" class="form-control" placeholder="New SSH Port" x-model="newSshPort" />
@@ -80,7 +81,38 @@
             </div>
           </div>
 
-          <!-- Tailscale Controls -->
+          <!-- SSH Key Management -->
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-header">
+                <h5>SSH Key Management</h5>
+              </div>
+              <div class="card-body">
+                <div class="input-group mb-3">
+                  <input type="file" id="keyFile" accept=".pub,.txt" class="form-control" />
+                  <button class="btn btn-secondary" @click="uploadKey">Upload Key</button>
+                </div>
+                <div>
+                  <button class="btn btn-info mb-2" @click="fetchKeys">List Authorized Keys</button>
+                  <ul>
+                    <template x-for="(key, index) in sshKeys" :key="index">
+                      <li>
+                        <span x-text="key.substring(0, 50) + (key.length > 50 ? '...' : '')"></span>
+                        <button class="btn btn-danger btn-sm" @click="removeKey(index)">Remove</button>
+                      </li>
+                    </template>
+                  </ul>
+                </div>
+              </div>
+              <div class="card-footer">
+                Upload new keys or remove existing SSH public keys.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tailscale Controls -->
+        <div class="row">
           <div class="col-md-6">
             <div class="card">
               <div class="card-header">
@@ -89,7 +121,7 @@
               <div class="card-body">
                 <p>
                   <strong>Status:</strong>
-                  <span x-text="tailscaleStatus.running ? 'Running' : 'Stopped / Needs Login'"></span>
+                  <span x-text="tailscaleStatus.connected ? 'Running' : tailscaleStatus.statusText"></span>
                   <br />
                   <template x-if="tailscaleStatus.loginURL">
                     <span>
@@ -98,25 +130,25 @@
                     </span>
                   </template>
                 </p>
-                <div class="btn-group" role="group">
+                <div class="btn-group" role="group" x-show="!tailscaleStatus.connected">
                   <button class="btn btn-success" 
                     @click="runCommand('tailscale_up')" 
-                    :disabled="tailscaleStatus.running">Tailscale Up</button>
+                    >Tailscale Up</button>
                   <button class="btn btn-info" 
                     @click="runCommand('tailscale_up_ssh')" 
-                    :disabled="tailscaleStatus.running">Up with SSH</button>
+                    >Up with SSH</button>
                 </div>
-                <div class="btn-group" role="group">
+                <div class="btn-group" role="group" x-show="tailscaleStatus.connected">
                   <button class="btn btn-warning" 
                     @click="runCommand('tailscale_down')" 
-                    :disabled="!tailscaleStatus.running">Tailscale Down</button>
+                    >Tailscale Down</button>
                   <button class="btn btn-danger" 
                     @click="runCommand('tailscale_logout')" 
-                    :disabled="!tailscaleStatus.running">Logout</button>
+                    >Logout</button>
                 </div>
-                <div class="mt-3">
-                  <h6>Detailed Status</h6>
-                  <pre x-text="tailscaleStatus.output"></pre>
+                <!-- Peer Graph -->
+                <div id="peerGraph" x-show="tailscaleStatus.connected">
+                  <canvas id="graphCanvas" width="250" height="250"></canvas>
                 </div>
               </div>
               <div class="card-footer">
@@ -148,16 +180,17 @@
     <script>
       function devControls() {
         return {
-          sshStatus: { running: false, port: "22" },
-          tailscaleStatus: { running: false, output: "", loginURL: "" },
+          sshStatus: { enabled: false, port: "22" },
+          tailscaleStatus: { connected: false, statusText: "Stopped", output: "", loginURL: "", peers: [] },
+          sshKeys: [],
           newSshPort: "",
           logOutput: "",
-
+    
           // Run a command by calling the CGI script.
-          runCommand(action, port = null) {
+          runCommand(action, param = null) {
             let url = '/cgi-bin/dev_controls?action=' + action;
-            if (port) {
-              url += '&port=' + port;
+            if (param !== null) {
+              url += '&port=' + param;
             }
             fetch(url)
               .then(response => response.json())
@@ -167,15 +200,14 @@
                 } else if (data.status) {
                   this.logOutput += data.status + "\n";
                 }
-                // Refresh the overall status
                 this.fetchAllStatus();
               })
               .catch(error => {
                 this.logOutput += "Fetch error: " + error + "\n";
               });
           },
-
-          // Fetch both SSH and Tailscale status.
+    
+          // Fetch SSH and Tailscale status.
           fetchAllStatus() {
             fetch('/cgi-bin/dev_controls?action=all_status')
               .then(response => response.json())
@@ -185,19 +217,119 @@
                 }
                 if (data.tailscale) {
                   this.tailscaleStatus = data.tailscale;
+                  this.drawPeerGraph();
+                  if (this.tailscaleStatus.loginURL) {
+                    alert("Tailscale login required:\n" + this.tailscaleStatus.loginURL);
+                  }
                 }
               })
               .catch(error => {
                 console.error("Status fetch error:", error);
               });
           },
-
-          // Initialize the page (polling status every 5 seconds).
+    
+          // Fetch list of authorized SSH keys.
+          fetchKeys() {
+            fetch('/cgi-bin/dev_controls?action=list_keys')
+              .then(response => response.json())
+              .then(data => {
+                if (data.keys) {
+                  this.sshKeys = data.keys;
+                }
+              })
+              .catch(error => {
+                console.error("Keys fetch error:", error);
+              });
+          },
+    
+          // Remove a key by index.
+          removeKey(index) {
+            if (confirm("Remove key at index " + index + "?")) {
+              fetch('/cgi-bin/dev_controls?action=remove_key&port=' + index)
+                .then(response => response.json())
+                .then(data => {
+                  if (data.error) {
+                    alert("Error: " + data.error);
+                  } else {
+                    alert("Key removed.");
+                    this.fetchKeys();
+                  }
+                });
+            }
+          },
+    
+          // Initialize: poll status every 5 seconds and fetch keys.
           init() {
             this.fetchAllStatus();
+            this.fetchKeys();
             setInterval(() => {
               this.fetchAllStatus();
+              this.fetchKeys();
             }, 5000);
+          },
+    
+          // Upload an SSH public key.
+          uploadKey() {
+            const fileInput = document.getElementById('keyFile');
+            if (fileInput.files.length > 0) {
+              const file = fileInput.files[0];
+              const reader = new FileReader();
+              reader.onload = () => {
+                fetch('/cgi-bin/dev_controls?action=upload_key', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'text/plain' },
+                  body: reader.result
+                })
+                .then(() => {
+                  alert("SSH public key uploaded.");
+                  this.fetchKeys();
+                  this.fetchAllStatus();
+                });
+              };
+              reader.readAsText(file);
+            } else {
+              alert("Please select a public key file.");
+            }
+          },
+    
+          // Draw a simple peer graph on a canvas.
+          drawPeerGraph() {
+            const canvas = document.getElementById('graphCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+            // Draw central node ("You")
+            const cx = w / 2, cy = h / 2;
+            ctx.fillStyle = "#4e79a7";
+            ctx.beginPath();
+            ctx.arc(cx, cy, 12, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.fillStyle = "#000";
+            ctx.font = "12px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("You", cx, cy - 20);
+            // Draw peers around in a circle.
+            const count = this.tailscaleStatus.peers.length;
+            if (count === 0) return;
+            const r = Math.min(cx, cy) - 30;
+            for (let i = 0; i < count; i++) {
+              const angle = (2 * Math.PI / count) * i;
+              const x = cx + r * Math.cos(angle);
+              const y = cy + r * Math.sin(angle);
+              ctx.fillStyle = "#59a14f";
+              ctx.beginPath();
+              ctx.arc(x, y, 10, 0, 2 * Math.PI);
+              ctx.fill();
+              ctx.strokeStyle = "#999";
+              ctx.beginPath();
+              ctx.moveTo(cx, cy);
+              ctx.lineTo(x, y);
+              ctx.stroke();
+              const label = this.tailscaleStatus.peers[i].name || this.tailscaleStatus.peers[i].ip;
+              ctx.fillStyle = "#000";
+              ctx.fillText(label, x, y - 15);
+            }
           }
         };
       }
