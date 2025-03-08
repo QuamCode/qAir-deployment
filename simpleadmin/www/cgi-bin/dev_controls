@@ -37,20 +37,20 @@ TAILSCALE="$TAILSCALE_DIR/tailscale"
 
 # --- Helper: Get SSH status ---
 get_ssh_status() {
-  ssh_running=$($SYSTEMCTL is-active sshd 2>/dev/null)
-  if [ "$ssh_running" != "active" ]; then
-    # fallback: check for sshd process
-    if pidof sshd >/dev/null 2>&1; then
-      enabled=true
-    else
-      enabled=false
-    fi
-  else
+  # Try systemctl first:
+  if $SYSTEMCTL is-active sshd >/dev/null 2>&1; then
     enabled=true
+  elif $SYSTEMCTL is-active ssh >/dev/null 2>&1; then
+    enabled=true
+  # Fallback to checking process:
+  elif pidof sshd >/dev/null 2>&1; then
+    enabled=true
+  else
+    enabled=false
   fi
-  port=$(grep -E '^[[:space:]]*Port ' /etc/ssh/sshd_config | tail -n1 | sed 's/^[#[:space:]]*Port //')
-  if [ -z "$port" ]; then port="22"; fi
-  echo "{\"enabled\": $enabled, \"port\": \"$port\"}"
+  ssh_port=$(grep -E '^[[:space:]]*Port ' /etc/ssh/sshd_config | tail -n1 | sed 's/^[#[:space:]]*Port //')
+  if [ -z "$ssh_port" ]; then ssh_port="22"; fi
+  echo "{\"enabled\": $enabled, \"port\": \"$ssh_port\"}"
 }
 
 # --- Helper: Sanitize output (replace newlines and escape quotes) ---
@@ -80,25 +80,27 @@ get_tailscale_status() {
       ts_loginURL=""
     fi
     safe_output=$(sanitize "$ts_json")
-    # Extract peers with jq if available
+    # Use jq to extract peers if available.
     if command -v jq >/dev/null 2>&1; then
       ts_peers=$(echo "$ts_json" | jq '[.Peer[] | {name:.HostName, ip:.TailAddr}]')
     else
       ts_peers="[]"
     fi
   else
-    # Fallback to plain text output.
+    # Fallback: plain text output.
     ts_text=$($SUDO $TAILSCALE status 2>&1)
     safe_output=$(sanitize "$ts_text")
     if echo "$ts_text" | grep -q "Login URL:"; then
       connected=false
       statusText="Needs Login"
-      ts_loginURL=$(echo "$ts_text" | grep "Login URL:" | sed 's/.*Login URL: //')
+      # Extract URL using grep -o for pattern starting with https://
+      ts_loginURL=$(echo "$ts_text" | grep -o "https://[^ ]*")
       ts_loginURL=$(sanitize "$ts_loginURL")
     elif echo "$ts_text" | grep -q "Logged out"; then
       connected=false
       statusText="Logged out"
-      ts_loginURL=""
+      ts_loginURL=$(echo "$ts_text" | grep -o "https://[^ ]*")
+      ts_loginURL=$(sanitize "$ts_loginURL")
     else
       connected=true
       statusText="Connected"
@@ -121,7 +123,7 @@ list_keys() {
       if [ "$first" = true ]; then
         first=false
       else
-        keys_json+="," 
+        keys_json+=","
       fi
       keys_json+="\"$escaped\""
     done < "$AUTH_FILE"
@@ -158,7 +160,9 @@ case "$action" in
     ;;
   "ssh_enable")
     if ! $SYSTEMCTL start sshd 2>/dev/null; then
-      $SYSTEMCTL start ssh 2>/dev/null
+      if ! service sshd start 2>/dev/null; then
+        echo "{\"error\": \"Failed to start sshd\"}" && exit 1
+      fi
     fi
     sleep 1
     ssh_json=$(get_ssh_status)
@@ -166,7 +170,9 @@ case "$action" in
     ;;
   "ssh_disable")
     if ! $SYSTEMCTL stop sshd 2>/dev/null; then
-      $SYSTEMCTL stop ssh 2>/dev/null
+      if ! service sshd stop 2>/dev/null; then
+        echo "{\"error\": \"Failed to stop sshd\"}" && exit 1
+      fi
     fi
     sleep 1
     ssh_json=$(get_ssh_status)
@@ -180,7 +186,9 @@ case "$action" in
         echo "Port $param" >> /etc/ssh/sshd_config
       fi
       if ! $SYSTEMCTL restart sshd 2>/dev/null; then
-        $SYSTEMCTL restart ssh 2>/dev/null
+        if ! service sshd restart 2>/dev/null; then
+          echo "{\"error\": \"Failed to restart sshd\"}" && exit 1
+        fi
       fi
       sleep 1
       ssh_json=$(get_ssh_status)
@@ -213,14 +221,13 @@ case "$action" in
     get_tailscale_status
     ;;
   "tailscale_up")
-    # Run tailscale up without forcing reauth.
     TS_OUT=$($SUDO $TAILSCALE up --accept-dns=false --reset 2>&1)
     sleep 1
     ts_json=$(get_tailscale_status)
     echo "{\"status\": \"Tailscale up\", \"tailscale\": $ts_json}"
     ;;
   "tailscale_login")
-    # New action: force reauthentication so AuthURL is generated.
+    # Force reauth to trigger AuthURL output.
     TS_OUT=$($SUDO $TAILSCALE up --force-reauth --json 2>&1)
     sleep 1
     ts_json=$(get_tailscale_status)
