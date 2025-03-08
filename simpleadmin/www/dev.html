@@ -137,6 +137,9 @@
                   <button class="btn btn-info" 
                     @click="runCommand('tailscale_up_ssh')" 
                     >Up with SSH</button>
+                  <button class="btn btn-warning" 
+                    @click="runCommand('tailscale_login')" 
+                    >Login</button>
                 </div>
                 <div class="btn-group" role="group" x-show="tailscaleStatus.connected">
                   <button class="btn btn-warning" 
@@ -186,7 +189,7 @@
           newSshPort: "",
           logOutput: "",
     
-          // Run command by calling the CGI script.
+          // Run a command by calling the CGI script.
           runCommand(action, param = null) {
             let url = '/cgi-bin/dev_controls?action=' + action;
             if (param !== null) {
@@ -219,6 +222,7 @@
                   this.tailscaleStatus = data.tailscale;
                   this.drawPeerGraph();
                   if (this.tailscaleStatus.loginURL) {
+                    // Optionally, show an alert if login is needed.
                     alert("Tailscale login required:\n" + this.tailscaleStatus.loginURL);
                   }
                 }

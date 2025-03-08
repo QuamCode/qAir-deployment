@@ -4,24 +4,24 @@
 
 # --- Parse query parameters ---
 action=""
-port=""
+param=""
 if [ -n "$QUERY_STRING" ]; then
   IFS='&' read -ra params <<< "$QUERY_STRING"
-  for param in "${params[@]}"; do
-    case $param in
-      action=*) action="${param#*=}" ;;
-      port=*) port="${param#*=}" ;;
+  for p in "${params[@]}"; do
+    case $p in
+      action=*) action="${p#*=}" ;;
+      port=*) param="${p#*=}" ;;
     esac
   done
 fi
 
-# If method is POST and action==upload_key, read key content from stdin.
+# If method is POST and action==upload_key, read key content from STDIN.
 uploaded_key=""
 if [ "$REQUEST_METHOD" = "POST" ] && [ "$action" = "upload_key" ]; then
   read -N "${CONTENT_LENGTH:-0}" uploaded_key
 fi
 
-# Set Content-Type header.
+# --- Output HTTP header ---
 if [ -z "$action" ]; then
   echo "Content-Type: text/html"
 else
@@ -29,7 +29,7 @@ else
 fi
 echo ""
 
-# --- Define required paths ---
+# --- Define paths (adjust as needed) ---
 SUDO="/opt/bin/sudo"
 SYSTEMCTL="/bin/systemctl"
 TAILSCALE_DIR="/usrdata/tailscale"
@@ -37,19 +37,20 @@ TAILSCALE="$TAILSCALE_DIR/tailscale"
 
 # --- Helper: Get SSH status ---
 get_ssh_status() {
-  # Try both "sshd" and "ssh" as service names.
-  if $SYSTEMCTL is-active sshd >/dev/null 2>&1; then
-    ssh_running=true
-  elif $SYSTEMCTL is-active ssh >/dev/null 2>&1; then
-    ssh_running=true
+  ssh_running=$($SYSTEMCTL is-active sshd 2>/dev/null)
+  if [ "$ssh_running" != "active" ]; then
+    # fallback: check for sshd process
+    if pidof sshd >/dev/null 2>&1; then
+      enabled=true
+    else
+      enabled=false
+    fi
   else
-    ssh_running=false
+    enabled=true
   fi
-  ssh_port=22
-  if grep -qE '^[[:space:]]*Port ' /etc/ssh/sshd_config; then
-    ssh_port=$(grep -E '^[[:space:]]*Port ' /etc/ssh/sshd_config | tail -n1 | sed 's/^[#[:space:]]*Port //')
-  fi
-  echo "{\"enabled\": $ssh_running, \"port\": $ssh_port}"
+  port=$(grep -E '^[[:space:]]*Port ' /etc/ssh/sshd_config | tail -n1 | sed 's/^[#[:space:]]*Port //')
+  if [ -z "$port" ]; then port="22"; fi
+  echo "{\"enabled\": $enabled, \"port\": \"$port\"}"
 }
 
 # --- Helper: Sanitize output (replace newlines and escape quotes) ---
@@ -57,78 +58,55 @@ sanitize() {
   echo "$1" | tr '\n\r' ' ' | sed 's/"/\\"/g'
 }
 
-# --- Helper: Get Tailscale status using --json if possible ---
+# --- Helper: Get Tailscale status ---
 get_tailscale_status() {
+  # Try JSON output from tailscale status:
   ts_json=$($SUDO $TAILSCALE status --json 2>/dev/null)
-  ts_connected=false
-  ts_status="Stopped"
-  ts_loginURL=""
-  ts_peers="[]"
-  if [ -n "$ts_json" ]; then
-    # Attempt to parse the JSON output.
+  first_char=$(echo "$ts_json" | cut -c1)
+  if [ "$first_char" = "{" ]; then
     backendState=$(echo "$ts_json" | sed -n 's/.*"BackendState":"\([^"]*\)".*/\1/p')
     if [ "$backendState" = "NeedsLogin" ]; then
-      ts_status="Needs Login"
-      ts_connected=false
+      connected=false
+      statusText="Needs Login"
       ts_loginURL=$(echo "$ts_json" | sed -n 's/.*"AuthURL":"\([^"]*\)".*/\1/p')
       ts_loginURL=$(sanitize "$ts_loginURL")
     elif [ "$backendState" = "Running" ]; then
-      ts_status="Connected"
-      ts_connected=true
+      connected=true
+      statusText="Connected"
+      ts_loginURL=""
     else
-      ts_status="$backendState"
-      ts_connected=false
-    fi
-    # Attempt to extract peers from JSON. (If jq is available, this is more robust.)
-    if command -v jq >/dev/null 2>&1; then
-      ts_peers=$(echo "$ts_json" | jq '[.Peer[] | {name: .HostName, ip: .TailAddr}]')
-    else
-      # Fallback to text parsing: each line starting with 100.
-      peers=""
-      while IFS= read -r line; do
-        ip=$(echo "$line" | awk '{print $1}')
-        name=$(echo "$line" | awk '{print $2}')
-        if [[ "$ip" =~ ^100\. ]]; then
-          peers+="{\"name\":\"$name\",\"ip\":\"$ip\"},"
-        fi
-      done <<< "$(echo "$ts_json" | grep '^100\.' )"
-      peers=${peers%,}
-      if [ -n "$peers" ]; then
-        ts_peers="[$peers]"
-      fi
+      connected=false
+      statusText="$backendState"
+      ts_loginURL=""
     fi
     safe_output=$(sanitize "$ts_json")
-  else
-    # Fallback: use plain text output.
-    ts_output=$($SUDO $TAILSCALE status 2>&1)
-    safe_output=$(sanitize "$ts_output")
-    if echo "$ts_output" | grep -q "Login URL:"; then
-      ts_status="Needs Login"
-      ts_connected=false
-      ts_loginURL=$(echo "$ts_output" | grep "Login URL:" | sed 's/.*Login URL: //')
-      ts_loginURL=$(sanitize "$ts_loginURL")
-    elif echo "$ts_output" | grep -q "Logged out"; then
-      ts_status="Logged out"
-      ts_connected=false
+    # Extract peers with jq if available
+    if command -v jq >/dev/null 2>&1; then
+      ts_peers=$(echo "$ts_json" | jq '[.Peer[] | {name:.HostName, ip:.TailAddr}]')
     else
-      ts_status="Connected"
-      ts_connected=true
-      # Parse peers from text output.
-      peers=""
-      while IFS= read -r line; do
-        ip=$(echo "$line" | awk '{print $1}')
-        name=$(echo "$line" | awk '{print $2}')
-        if [[ "$ip" =~ ^100\. ]]; then
-          peers+="{\"name\":\"$name\",\"ip\":\"$ip\"},"
-        fi
-      done <<< "$(echo "$ts_output" | grep '^100\.')"
-      peers=${peers%,}
-      if [ -n "$peers" ]; then
-        ts_peers="[$peers]"
-      fi
+      ts_peers="[]"
     fi
+  else
+    # Fallback to plain text output.
+    ts_text=$($SUDO $TAILSCALE status 2>&1)
+    safe_output=$(sanitize "$ts_text")
+    if echo "$ts_text" | grep -q "Login URL:"; then
+      connected=false
+      statusText="Needs Login"
+      ts_loginURL=$(echo "$ts_text" | grep "Login URL:" | sed 's/.*Login URL: //')
+      ts_loginURL=$(sanitize "$ts_loginURL")
+    elif echo "$ts_text" | grep -q "Logged out"; then
+      connected=false
+      statusText="Logged out"
+      ts_loginURL=""
+    else
+      connected=true
+      statusText="Connected"
+      ts_loginURL=""
+    fi
+    ts_peers="[]"
   fi
-  echo "{\"connected\": $ts_connected, \"statusText\": \"$ts_status\", \"loginURL\": \"$ts_loginURL\", \"output\": \"$safe_output\", \"peers\": $ts_peers}"
+  echo "{\"connected\": $connected, \"statusText\": \"$statusText\", \"loginURL\": \"$ts_loginURL\", \"output\": \"$safe_output\", \"peers\": $ts_peers}"
 }
 
 # --- SSH Key Management Functions ---
@@ -143,7 +121,7 @@ list_keys() {
       if [ "$first" = true ]; then
         first=false
       else
-        keys_json+=","
+        keys_json+="," 
       fi
       keys_json+="\"$escaped\""
     done < "$AUTH_FILE"
@@ -155,7 +133,7 @@ list_keys() {
 }
 
 remove_key() {
-  index="$port"  # use 'port' parameter as key index
+  index="$param"  # using 'param' as key index
   AUTH_FILE="/root/.ssh/authorized_keys"
   if [ ! -f "$AUTH_FILE" ]; then
     echo "{\"error\": \"Authorized keys file not found\"}"
@@ -179,7 +157,6 @@ case "$action" in
     get_ssh_status
     ;;
   "ssh_enable")
-    # Try starting "sshd" then "ssh" if necessary.
     if ! $SYSTEMCTL start sshd 2>/dev/null; then
       $SYSTEMCTL start ssh 2>/dev/null
     fi
@@ -196,18 +173,18 @@ case "$action" in
     echo "{\"status\": \"SSH disabled\", \"ssh\": $ssh_json}"
     ;;
   "ssh_change_port")
-    if [ -n "$port" ]; then
+    if [ -n "$param" ]; then
       if grep -qE '^[[:space:]]*Port ' /etc/ssh/sshd_config; then
-        sed -i -E "s/^[#[:space:]]*Port .*/Port $port/" /etc/ssh/sshd_config
+        sed -i -E "s/^[#[:space:]]*Port .*/Port $param/" /etc/ssh/sshd_config
       else
-        echo "Port $port" >> /etc/ssh/sshd_config
+        echo "Port $param" >> /etc/ssh/sshd_config
       fi
       if ! $SYSTEMCTL restart sshd 2>/dev/null; then
         $SYSTEMCTL restart ssh 2>/dev/null
       fi
       sleep 1
       ssh_json=$(get_ssh_status)
-      echo "{\"status\": \"SSH port changed to $port\", \"ssh\": $ssh_json}"
+      echo "{\"status\": \"SSH port changed to $param\", \"ssh\": $ssh_json}"
     else
       echo '{"error": "Port not provided"}'
     fi
@@ -226,7 +203,7 @@ case "$action" in
     list_keys
     ;;
   "remove_key")
-    if [ -n "$port" ]; then
+    if [ -n "$param" ]; then
       remove_key
     else
       echo '{"error": "Key index not provided"}'
@@ -236,10 +213,18 @@ case "$action" in
     get_tailscale_status
     ;;
   "tailscale_up")
+    # Run tailscale up without forcing reauth.
     TS_OUT=$($SUDO $TAILSCALE up --accept-dns=false --reset 2>&1)
     sleep 1
     ts_json=$(get_tailscale_status)
     echo "{\"status\": \"Tailscale up\", \"tailscale\": $ts_json}"
+    ;;
+  "tailscale_login")
+    # New action: force reauthentication so AuthURL is generated.
+    TS_OUT=$($SUDO $TAILSCALE up --force-reauth --json 2>&1)
+    sleep 1
+    ts_json=$(get_tailscale_status)
+    echo "{\"status\": \"Tailscale login initiated\", \"tailscale\": $ts_json}"
     ;;
   "tailscale_up_ssh")
     TS_OUT=$($SUDO $TAILSCALE up --ssh --accept-dns=false --reset 2>&1)
