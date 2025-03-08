@@ -14,7 +14,7 @@
       .btn-group { margin-bottom: 1rem; }
       textarea { resize: none; }
       #peerGraph { text-align: center; margin-top: 1em; }
-      #noPeers { text-align: center; font-style: italic; color: #888; }
+      #noPeers { text-align: center; color: #888; }
     </style>
   </head>
   <body>
@@ -61,19 +61,12 @@
                   <span x-text="sshStatus.port"></span>
                 </p>
                 <div class="btn-group" role="group">
-                  <button class="btn btn-primary" 
-                    @click="runCommand('ssh_disable')" 
-                    :disabled="!sshStatus.enabled">Disable SSH</button>
-                  <button class="btn btn-success" 
-                    @click="runCommand('ssh_enable')" 
-                    :disabled="sshStatus.enabled">Enable SSH</button>
+                  <button class="btn btn-primary" @click="runCommand('ssh_disable')" :disabled="!sshStatus.enabled">Disable SSH</button>
+                  <button class="btn btn-success" @click="runCommand('ssh_enable')" :disabled="sshStatus.enabled">Enable SSH</button>
                 </div>
                 <div class="input-group mb-3">
                   <input type="number" class="form-control" placeholder="New SSH Port" x-model="newSshPort" />
-                  <button class="btn btn-secondary" 
-                    @click="runCommand('ssh_change_port', newSshPort)">
-                    Change Port
-                  </button>
+                  <button class="btn btn-secondary" @click="runCommand('ssh_change_port', newSshPort)">Change Port</button>
                 </div>
               </div>
               <div class="card-footer">
@@ -202,7 +195,7 @@
               });
           },
     
-          // Fetch current status.
+          // Fetch status for SSH and Tailscale.
           fetchAllStatus() {
             fetch('/cgi-bin/dev_controls?action=all_status')
               .then(response => response.json())
@@ -284,14 +277,14 @@
             }
           },
     
-          // Draw peer graph.
+          // Draw a peer graph.
           drawPeerGraph() {
             const canvas = document.getElementById('graphCanvas');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             const w = canvas.width, h = canvas.height;
             ctx.clearRect(0, 0, w, h);
-            // Draw central node.
+            // Draw central node ("You")
             const cx = w / 2, cy = h / 2;
             ctx.fillStyle = "#4e79a7";
             ctx.beginPath();
@@ -301,7 +294,7 @@
             ctx.font = "12px sans-serif";
             ctx.textAlign = "center";
             ctx.fillText("You", cx, cy - 20);
-            // Draw peers.
+            // Draw peer nodes if any.
             const peers = this.tailscaleStatus.peers;
             if (peers.length === 0) return;
             const r = Math.min(cx, cy) - 30;
