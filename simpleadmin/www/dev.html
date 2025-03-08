@@ -42,7 +42,7 @@
             </div>
           </div>
         </nav>
-
+    
         <!-- Status and Controls -->
         <div class="row">
           <!-- SSH Controls -->
@@ -80,7 +80,7 @@
               </div>
             </div>
           </div>
-
+    
           <!-- SSH Key Management -->
           <div class="col-md-6">
             <div class="card">
@@ -110,7 +110,7 @@
             </div>
           </div>
         </div>
-
+    
         <!-- Tailscale Controls -->
         <div class="row">
           <div class="col-md-6">
@@ -157,7 +157,7 @@
             </div>
           </div>
         </div>
-
+    
         <!-- Output Log -->
         <div class="row">
           <div class="col">
@@ -186,7 +186,7 @@
           newSshPort: "",
           logOutput: "",
     
-          // Run a command by calling the CGI script.
+          // Run command by calling the CGI script.
           runCommand(action, param = null) {
             let url = '/cgi-bin/dev_controls?action=' + action;
             if (param !== null) {
