@@ -1,8 +1,6 @@
 # ./qAir Deployment
 Current Branch: **Development**
 
-
-#### [JUMP TO HOW TO USE](#how-to-use)
 **Currently:** This will allow you to install or if already installed, update, remove, or modify:
  -  Admin: A simple web interface for managing modem through it's gateway address
 	 - It will install socat-at-bridge: sets up ttyOUT and ttyOUT2 for AT commands. You'll be able to use the `atcmd` command as well for an interactive at command session from adb, ssh, or ttyd
@@ -13,10 +11,16 @@ Current Branch: **Development**
  - Entware/OPKG: A package installer/manager/repo
 	- Run `opkg help` to see how to use it
 	- These packages are installable: https://bin.entware.net/armv7sf-k3.2/Packages.html
+
  - TTYd: A shell session right from your browser
 	 - Currently this uses port 443 but SSL/TLS is not in use (http only for now)
 	 - Entware/OPKG is required so it will install it if it isn't installed
 	 - This will replace the stock Quectel login and passwd binaries with ones from entware
+
+
+<img width="1075" alt="Screenshot 2025-04-16 at 7 57 24 pm" src="https://github.com/user-attachments/assets/cb39f1c1-71b1-4f79-84b5-bf8e3423bab9" />
+![image](https://github.com/user-attachments/assets/8afe994c-1f2d-4a3c-891a-8839b3c6760c)
+
 
   
  - Make sure your modem is connected by USB to your computer
