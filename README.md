@@ -16,10 +16,11 @@ Current Branch: **Development**
 	 - Currently this uses port 443 but SSL/TLS is not in use (http only for now)
 	 - Entware/OPKG is required so it will install it if it isn't installed
 	 - This will replace the stock Quectel login and passwd binaries with ones from entware
+<img width="1090" alt="Screenshot 2025-04-16 at 7 57 50 pm" src="https://github.com/user-attachments/assets/e03b92d1-baf9-4ae0-b23b-2dce3fcc6484" />
 
 
 <img width="1075" alt="Screenshot 2025-04-16 at 7 57 24 pm" src="https://github.com/user-attachments/assets/cb39f1c1-71b1-4f79-84b5-bf8e3423bab9" />
-![image](https://github.com/user-attachments/assets/8afe994c-1f2d-4a3c-891a-8839b3c6760c)
+
 
 
   
