@@ -425,11 +425,11 @@
                   </button>
                 </div>
               </div>
-                    </div>
-                  </div>
-                </div>
+            </div>
+          </div>
+        </div>
 
-                <!-- Peer List -->
+        <!-- Peer List -->
         <div class="row mb-4">
           <div class="col-12">
             <div class="card">
@@ -461,8 +461,8 @@
                             <td>
                               <span class="status-indicator" :class="peer.online ? 'status-online' : 'status-offline'"></span>
                               <span x-text="peer.online ? 'Online' : 'Offline'"></span>
-                              <template x-if="peer.online && peer.pingStats">
-                                <span class="text-muted ms-2" x-text="peer.pingStats.avg ? peer.pingStats.avg.toFixed(0) + ' ms' : ''"></span>
+                              <template x-if="peer.online && peer.pingStats && peer.pingStats.avg">
+                                <span class="text-muted ms-2" x-text="peer.pingStats.avg.toFixed(0) + ' ms'"></span>
                               </template>
                             </td>
                             <td x-text="peer.last_seen"></td>
@@ -478,9 +478,10 @@
                     </table>
                   </div>
                 </div>
-                              </div>
-                            </div>
-                          </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- SSH Key Management -->
         <div class="row mb-4">
@@ -488,8 +489,8 @@
             <div class="card">
               <div class="card-header">
                 <h5 class="mb-0">SSH Key Management</h5>
-                    </div>
-                        <div class="card-body">
+              </div>
+              <div class="card-body">
                 <div class="input-group mb-3">
                   <input type="file" id="keyFile" accept=".pub,.txt" class="form-control" />
                   <button class="btn btn-primary" @click="uploadKey">
@@ -530,99 +531,6 @@
       </div>
     </main>
 
-    <!-- Peer Details Modal -->
-    <div class="modal fade" id="peerDetailsModal" tabindex="-1" x-show="selectedPeer" @click.away="closePeerDetails()">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Peer Details</h5>
-            <button type="button" class="btn-close" @click="closePeerDetails()"></button>
-          </div>
-          <div class="modal-body">
-            <template x-if="selectedPeer">
-              <div>
-                <div class="row mb-3">
-                  <div class="col-md-6">
-                    <div class="stats-card">
-                      <div class="stats-value" x-text="selectedPeer.name"></div>
-                      <div class="stats-label">Name</div>
-                    </div>
-                  </div>
-                  <div class="col-md-6">
-                    <div class="stats-card">
-                      <div class="stats-value" x-text="selectedPeer.os"></div>
-                      <div class="stats-label">OS</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <div class="col-md-6">
-                    <div class="stats-card">
-                      <div class="stats-value" :class="selectedPeer.online ? 'text-success' : 'text-danger'"
-                           x-text="selectedPeer.online ? 'Online' : 'Offline'"></div>
-                      <div class="stats-label">Status</div>
-                    </div>
-                  </div>
-                  <div class="col-md-6">
-                    <div class="stats-card">
-                      <div class="stats-value" x-text="selectedPeer.last_seen"></div>
-                      <div class="stats-label">Last Seen</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="card mb-3">
-                  <div class="card-header">Network Information</div>
-                  <div class="card-body">
-                    <h6>Tailscale IPs</h6>
-                    <code class="d-block mb-2" x-text="selectedPeer.tailscale_ips.join('\n')"></code>
-                    <h6>Allowed IPs</h6>
-                    <code class="d-block mb-2" x-text="selectedPeer.allowed_ips.join('\n')"></code>
-                  </div>
-                </div>
-                <template x-if="selectedPeer.pingStats">
-                  <div class="card mb-3">
-                    <div class="card-header">Ping Results</div>
-                    <div class="card-body">
-                      <div class="mb-2">
-                        <small class="text-muted">Last Ping:</small><br>
-                        <span x-text="selectedPeer.lastPing"></span>
-                      </div>
-                      <div class="mb-2">
-                        <small class="text-muted">Connection Type:</small><br>
-                    <template x-if="selectedPeer.pingStats">
-                      <div class="mt-3">
-                        <h6>Ping Statistics</h6>
-                        <div class="mb-2">
-                          <small class="text-muted">Last Ping:</small><br>
-                          <span x-text="selectedPeer.lastPing"></span>
-                        </div>
-                        <div class="mb-2">
-                          <small class="text-muted">Connection Type:</small><br>
-                          <span x-text="selectedPeer.pingStats.connectionType"></span>
-                        </div>
-                        <div class="mb-2">
-                          <small class="text-muted">Packets:</small><br>
-                          <span x-text="'Sent: ' + selectedPeer.pingStats.sent + ', Received: ' + selectedPeer.pingStats.received + ', Lost: ' + selectedPeer.pingStats.lost + ' (' + ((selectedPeer.pingStats.lost/selectedPeer.pingStats.sent*100).toFixed(1)) + '% loss)'"></span>
-                        </div>
-                        <div class="mb-2">
-                          <small class="text-muted">Round-trip Times:</small><br>
-                          <span x-text="'Min: ' + selectedPeer.pingStats.min + 'ms, Avg: ' + selectedPeer.pingStats.avg.toFixed(2) + 'ms, Max: ' + selectedPeer.pingStats.max + 'ms'"></span>
-                        </div>
-                        <div class="mt-3">
-                          <small class="text-muted">Raw Ping Output:</small><br>
-                          <pre class="bg-light p-2 rounded" style="font-family: 'Fira Code', monospace; font-size: 0.9em; white-space: pre-wrap;" x-text="selectedPeer.pingStats.rawOutput"></pre>
-                        </div>
-                      </div>
-                    </template>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-      </div>
-    </div>
-    
     <script src="js/dark-mode.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.0/cytoscape.min.js"></script>
     <script>
@@ -726,21 +634,6 @@
                 }
               });
             }, 60000); // Ping every minute
-
-            // Add click handler for modal backdrop
-            const modal = document.getElementById('peerDetailsModal');
-            modal.addEventListener('click', (e) => {
-              if (e.target === modal) {
-                this.closePeerDetails();
-              }
-            });
-
-            // Add keyboard handler for escape key
-            document.addEventListener('keydown', (e) => {
-              if (e.key === 'Escape' && modal.classList.contains('show')) {
-                this.closePeerDetails();
-              }
-            });
           },
     
           uploadKey() {
@@ -1046,26 +939,6 @@
               });
           },
     
-          showPeerDetails(peer) {
-            this.selectedPeer = peer;
-            const modal = document.getElementById('peerDetailsModal');
-            modal.classList.add('show');
-            modal.style.display = 'block';
-            document.body.classList.add('modal-open');
-            document.body.style.overflow = 'hidden';
-            document.body.style.paddingRight = '17px';
-          },
-
-          closePeerDetails() {
-            const modal = document.getElementById('peerDetailsModal');
-            modal.classList.remove('show');
-            modal.style.display = 'none';
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
-            this.selectedPeer = null;
-          },
-
           clearLog() {
             this.logOutput = "";
           }
