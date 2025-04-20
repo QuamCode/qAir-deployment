@@ -13,38 +13,219 @@
     <script src="js/bootstrap.bundle.min.js"></script>
     <script src="js/alpinejs.min.js" defer></script>
     <style>
-      .card { margin-bottom: 1rem; }
+      :root {
+        --primary-color: #007bff;
+        --success-color: #28a745;
+        --warning-color: #ffc107;
+        --danger-color: #dc3545;
+        --info-color: #17a2b8;
+        --light-color: #f8f9fa;
+        --dark-color: #343a40;
+        /* New color variables for status and network */
+        --status-online: #2ecc71;
+        --status-offline: #e74c3c;
+        --status-pending: #f39c12;
+        --status-warning: #f1c40f;
+        --status-info: #3498db;
+        --node-self: #9b59b6;
+        --node-peer-online: #2ecc71;
+        --node-peer-offline: #e74c3c;
+        --edge-online: #2ecc71;
+        --edge-offline: #e74c3c;
+        --edge-pending: #f39c12;
+        --graph-bg: #ffffff;
+        --graph-border: #e0e0e0;
+      }
+
+      body {
+        font-family: 'Fira Code', monospace;
+        background-color: var(--light-color);
+      }
+
+      .card {
+        margin-bottom: 1rem;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      .card-header {
+        background-color: var(--light-color);
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        font-weight: 500;
+      }
+
       .btn-group { margin-bottom: 0.5rem; }
-      .btn-sm { font-size: 0.8rem; padding: 0.25rem 0.5rem; }
+      .btn-sm { font-size: 0.8rem; padding: 0.rem 0.4rem; margin: 10px; }
       textarea { resize: none; }
+
+      /* Status indicators */
+      .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin: 10px;
+        position: relative;
+      }
+
+      .status-indicator::after {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -px;
+        bottom: -2px;
+        border-radius: 50%;
+        border: 2px solid currentColor;
+        opacity: 0.3;
+      }
+
+      .status-online { 
+        background-color: var(--status-online);
+        color: var(--status-online);
+        box-shadow: 0 0 8px var(--status-online);
+      }
+
+      .status-offline { 
+        background-color: var(--status-offline);
+        color: var(--status-offline);
+        box-shadow: 0 0 8px var(--status-offline);
+      }
+
+      .status-pending { 
+        background-color: var(--status-pending);
+        color: var(--status-pending);
+        box-shadow: 0 0 8px var(--status-pending);
+      }
+
+      .status-warning { 
+        background-color: var(--status-warning);
+        color: var(--status-warning);
+        box-shadow: 0 0 8px var(--status-warning);
+      }
+
+      .status-info { 
+        background-color: var(--status-info);
+        color: var(--status-info);
+        box-shadow: 0 0 8px var(--status-info);
+      }
+
       /* Graph container styling */
-      #graphContainer { width: 400px; height: 300px; margin: 1rem auto; border: 1px solid #ddd; }
+      #graphContainer {
+        width: 100%;
+        height: 400px;
+        margin: 1rem auto;
+        border: 1px solid var(--graph-border);
+        border-radius: 8px;
+        background-color: var(--graph-bg);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
       /* Tooltip styling */
       #tooltip {
         position: absolute;
         background: rgba(255,255,255,0.95);
-        border: 1px solid #ccc;
-        padding: 8px;
+        border: 1px solid var(--graph-border);
+        padding: 12px;
         font-size: 13px;
         font-family: "Fira Code", monospace;
-        border-radius: 4px;
-        box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+        border-radius: 6px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         display: none;
         z-index: 100;
-        max-width: 250px;
+        max-width: 300px;
+        backdrop-filter: blur(5px);
       }
-      #tooltip a { color: #337ab7; text-decoration: none; }
+
+      [data-bs-theme="dark"] #tooltip {
+        background: rgba(44, 48, 52, 0.95);
+        border-color: #404040;
+      }
+
+      #tooltip a { color: var(--primary-color); text-decoration: none; }
       #tooltip a:hover { text-decoration: underline; }
+
+      /* Progress bars */
+      .progress {
+        height: 8px;
+        margin: 5px 0;
+      }
+
+      /* Network stats cards */
+      .stats-card {
+        background: white;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+      }
+
+      .stats-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: var(--primary-color);
+      }
+
+      .stats-label {
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+      }
+
+      /* Peer list styling */
+      .peer-list {
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .peer-item {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.2s;
+      }
+
+      .peer-item:hover {
+        background-color: rgba(0,0,0,0.02);
+      }
+
+      /* Dark mode support */
+      [data-bs-theme="dark"] {
+        --light-color: #212529;
+        --dark-color: #f8f9fa;
+        --graph-bg: #2c3034;
+        --graph-border: #404040;
+        --node-self: #8e44ad;
+        --node-peer-online: #27ae60;
+        --node-peer-offline: #c0392b;
+        --edge-online: #27ae60;
+        --edge-offline: #c0392b;
+        --edge-pending: #d35400;
+      }
+
+      [data-bs-theme="dark"] .card {
+        background-color: #2c3034;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      }
+
+      [data-bs-theme="dark"] .card-header {
+        background-color: #2c3034;
+        border-bottom-color: rgba(255,255,255,0.1);
+      }
+
+      [data-bs-theme="dark"] .stats-card {
+        background-color: #2c3034;
+      }
     </style>
   </head>
   <body>
     <main>
       <div class="container my-4" x-data="devControls()" x-init="init()">
         <!-- Navigation -->
-        <nav class="navbar navbar-expand-lg mt-2">
+        <nav class="navbar navbar-expand-lg mb-4">
           <div class="container-fluid">
-            <a class="navbar-brand" href="/"><span class="mb-0 h4">./qAir</span></a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarText" aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
+            <a class="navbar-brand" href="/">
+              <span class="mb-0 h4">./qAir</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarText">
               <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarText">
@@ -54,7 +235,7 @@
                 <li class="nav-item"><a class="nav-link" href="/scanner.html">scan</a></li>
                 <li class="nav-item"><a class="nav-link" href="/settings.html">settings</a></li>
                 <li class="nav-item"><a class="nav-link" href="/sms.html">SMS</a></li>
-                <li class="nav-item"><a class="nav-link" href="/remote.html">remote</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/remote.html">remote</a></li>
                 <li class="nav-item"><a class="nav-link" href="/deviceinfo.html">hardware</a></li>
               </ul>
               <span class="navbar-text">
@@ -63,254 +244,266 @@
             </div>
           </div>
         </nav>
-    
-        <!-- Status and Controls -->
-        <div class="row">
-          <!-- SSH Controls -->
+
+        <!-- Status Overview -->
+        <div class="row mb-4">
           <div class="col-md-6">
             <div class="card">
-              <div class="card-header"><h5>SSH Controls</h5></div>
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">SSH Status</h5>
+                <span class="status-indicator" :class="sshStatus.enabled ? 'status-online' : 'status-offline'"></span>
+              </div>
               <div class="card-body">
-                <p>
-                  <strong>Status:</strong> <span x-text="sshStatus.enabled ? 'Running' : 'Stopped'"></span><br>
-                  <strong>Current Port:</strong> <span x-text="sshStatus.port"></span>
-                </p>
-                <div class="btn-group btn-group-sm" role="group">
-                  <button class="btn btn-primary" @click="runCommand('ssh_disable')" :disabled="!sshStatus.enabled">Disable SSH</button>
-                  <button class="btn btn-success" @click="runCommand('ssh_enable')" :disabled="sshStatus.enabled">Enable SSH</button>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="stats-card">
+                      <div class="stats-value" x-text="sshStatus.enabled ? 'Active' : 'Inactive'"></div>
+                      <div class="stats-label">Status</div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="stats-card">
+                      <div class="stats-value" x-text="sshStatus.port"></div>
+                      <div class="stats-label">Port</div>
+                    </div>
+                  </div>
                 </div>
-                <div class="input-group input-group-sm mb-3">
+                <div class="btn-group w-100 mt-3">
+                  <button class="btn btn-success" @click="runCommand('ssh_enable')" :disabled="sshStatus.enabled">
+                    <i class="bi bi-power"></i> Enable
+                  </button>
+                  <button class="btn btn-danger" @click="runCommand('ssh_disable')" :disabled="!sshStatus.enabled">
+                    <i class="bi bi-power-off"></i> Disable
+                  </button>
+                </div>
+                <div class="input-group mt-3">
                   <input type="number" class="form-control" placeholder="New SSH Port" x-model="newSshPort" />
-                  <button class="btn btn-secondary" @click="runCommand('ssh_change_port', newSshPort)">Change Port</button>
+                  <button class="btn btn-secondary" @click="runCommand('ssh_change_port', newSshPort)">
+                    Change Port
+                  </button>
                 </div>
               </div>
-              <div class="card-footer">Manage SSH access and port configuration.</div>
             </div>
           </div>
-    
-          <!-- SSH Key Management -->
+
           <div class="col-md-6">
             <div class="card">
-              <div class="card-header"><h5>SSH Key Management</h5></div>
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Tailscale Status</h5>
+                <span class="status-indicator" :class="tailscaleStatus.connected ? 'status-online' : 'status-offline'"></span>
+              </div>
               <div class="card-body">
-                <div class="input-group input-group-sm mb-3">
-                  <input type="file" id="keyFile" accept=".pub,.txt" class="form-control" />
-                  <button class="btn btn-secondary" @click="uploadKey">Upload Key</button>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="stats-card">
+                      <div class="stats-value" x-text="tailscaleStatus.connected ? 'Connected' : tailscaleStatus.statusText"></div>
+                      <div class="stats-label">Status</div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="stats-card">
+                      <div class="stats-value" x-text="tailscaleStatus.peers.length"></div>
+                      <div class="stats-label">Peers</div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <button class="btn btn-info btn-sm mb-2" @click="fetchKeys">List Authorized Keys</button>
-                  <ul>
-                    <template x-for="(key, index) in sshKeys" :key="index">
-                      <li>
-                        <span x-text="key.substring(0, 50) + (key.length > 50 ? '...' : '')"></span>
-                        <button class="btn btn-danger btn-sm" @click="removeKey(index)">Remove</button>
-                      </li>
-                    </template>
-                  </ul>
+                <div class="progress mt-3">
+                  <div class="progress-bar bg-success" role="progressbar" 
+                       :style="'width: ' + (tailscaleStatus.peers.filter(p => p.online).length / tailscaleStatus.peers.length * 100) + '%'"
+                       :aria-valuenow="tailscaleStatus.peers.filter(p => p.online).length"
+                       :aria-valuemax="tailscaleStatus.peers.length">
+                  </div>
+                </div>
+                <div class="btn-group w-100 mt-3">
+                  <button class="btn btn-success" @click="runCommand('tailscale_up')" :disabled="tailscaleStatus.connected">
+                    <i class="bi bi-power"></i> Connect
+                  </button>
+                  <button class="btn btn-danger" @click="runCommand('tailscale_down')" :disabled="!tailscaleStatus.connected">
+                    <i class="bi bi-power-off"></i> Disconnect
+                  </button>
                 </div>
               </div>
-              <div class="card-footer">Upload new keys or remove existing SSH public keys.</div>
             </div>
           </div>
         </div>
-    
-        <!-- Tailscale Controls -->
-        <div class="row">
-          <div class="col-md-6">
+
+        <!-- Network Graph -->
+        <div class="row mb-4">
+          <div class="col-12">
             <div class="card">
-              <div class="card-header"><h5>Tailscale Controls</h5></div>
+              <div class="card-header">
+                <h5 class="mb-0">Network Topology</h5>
+              </div>
               <div class="card-body">
-                <p>
-                  <strong>Status:</strong> 
-                  <span x-text="tailscaleStatus.connected ? 'Running' : tailscaleStatus.statusText"></span><br>
-                  <template x-if="tailscaleStatus.loginURL">
-                    <span>
-                      <strong>Login URL:</strong>
-                      <a :href="tailscaleStatus.loginURL" target="_blank" x-text="tailscaleStatus.loginURL"></a>
-                    </span>
-                  </template>
-                  <template x-if="tailscaleStatus.connected">
-                    <div class="mt-2">
-                      <strong>Your IP:</strong> <span x-text="tailscaleStatus.yourIP"></span><br>
-                      <strong>DNS Status:</strong> <span x-text="tailscaleStatus.dnsStatus"></span><br>
-                      <strong>Last Update:</strong> <span x-text="tailscaleStatus.lastUpdate"></span>
-                    </div>
-                  </template>
-                </p>
-                <!-- Button groups -->
-                <div class="d-flex flex-wrap gap-2">
-                  <!-- Power controls -->
-                  <div class="btn-group btn-group-sm" role="group">
-                    <button class="btn btn-success" @click="runCommand('tailscale_up')" :disabled="tailscaleStatus.connected">Up</button>
-                    <button class="btn btn-info" @click="runCommand('tailscale_up_ssh')" :disabled="tailscaleStatus.connected">Up with SSH</button>
-                    <button class="btn btn-warning" @click="runCommand('tailscale_down')" :disabled="!tailscaleStatus.connected">Down</button>
-                  </div>
-                  <!-- Authentication controls -->
-                  <div class="btn-group btn-group-sm" role="group">
-                    <button class="btn btn-warning" @click="runCommand('tailscale_login')" :disabled="tailscaleStatus.connected">Login</button>
-                    <button class="btn btn-danger" @click="runCommand('tailscale_logout')" :disabled="!tailscaleStatus.connected">Logout</button>
-                  </div>
-                  <!-- Additional controls -->
-                  <div class="btn-group btn-group-sm" role="group">
-                    <button class="btn btn-info" @click="runCommand('tailscale_status')" :disabled="!tailscaleStatus.connected">Refresh Status</button>
-                    <button class="btn btn-secondary" @click="runCommand('tailscale_netcheck')" :disabled="!tailscaleStatus.connected">Network Check</button>
-                  </div>
+                <div id="graphContainer"></div>
+                <div id="tooltip"></div>
+                <div class="btn-group mt-3">
+                  <button class="btn btn-outline-secondary" @click="toggleGraphLayout('cose')">
+                    <i class="bi bi-diagram-3"></i> Force-Directed
+                  </button>
+                  <button class="btn btn-outline-secondary" @click="toggleGraphLayout('circle')">
+                    <i class="bi bi-circle"></i> Circular
+                  </button>
                 </div>
-                <!-- Peer Graph -->
-                <div id="peerGraph" x-show="tailscaleStatus.connected" style="position:relative; margin-top:1rem;">
-                  <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="mb-0">Network Peers</h6>
-                    <div class="btn-group btn-group-sm">
-                      <button class="btn btn-outline-secondary" @click="toggleGraphLayout('cose')">Force-Directed</button>
-                      <button class="btn btn-outline-secondary" @click="toggleGraphLayout('circle')">Circular</button>
-                    </div>
-                  </div>
-                  <div id="graphContainer" style="width:400px; height:300px; border:1px solid #ddd;"></div>
-                  <div id="tooltip"></div>
-                </div>
-                <!-- Peer List -->
-                <div class="mt-3" x-show="tailscaleStatus.connected">
-                  <h6>Detailed Peer List</h6>
-                  <div class="table-responsive">
-                    <table class="table table-sm">
-                      <thead>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Peer List -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header">
+                <h5 class="mb-0">Connected Peers</h5>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>OS</th>
+                        <th>Status</th>
+                        <th>Last Seen</th>
+                        <th>IPs</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="peer in tailscaleStatus.peers" :key="peer.id">
                         <tr>
-                          <th>Name</th>
-                          <th>OS</th>
-                          <th>Status</th>
-                          <th>Last Seen</th>
-                          <th>IPs</th>
-                          <th>Actions</th>
+                          <td x-text="peer.name"></td>
+                          <td x-text="peer.os"></td>
+                          <td>
+                            <span class="status-indicator" :class="peer.online ? 'status-online' : 'status-offline'"></span>
+                            <span x-text="peer.online ? 'Online' : 'Offline'"></span>
+                          </td>
+                          <td x-text="peer.last_seen"></td>
+                          <td x-text="peer.tailscale_ips.join(', ')"></td>
+                          <td>
+                            <button class="btn btn-sm btn-outline-primary" @click="pingPeer(peer.id)">
+                              <i class="bi bi-activity"></i> Ping
+                            </button>
+                            <button class="btn btn-sm btn-outline-info" @click="showPeerDetails(peer)">
+                              <i class="bi bi-info-circle"></i> Details
+                            </button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        <template x-for="peer in tailscaleStatus.peers" :key="peer.id">
-                          <tr>
-                            <td x-text="peer.name"></td>
-                            <td x-text="peer.os"></td>
-                            <td>
-                              <span :class="peer.online ? 'badge bg-success' : 'badge bg-danger'" x-text="peer.online ? 'Online' : 'Offline'"></span>
-                            </td>
-                            <td x-text="peer.last_seen"></td>
-                            <td x-text="peer.tailscale_ips.join(', ')"></td>
-                            <td>
-                              <button class="btn btn-sm btn-outline-primary" @click="pingPeer(peer.id)">Ping</button>
-                              <button class="btn btn-sm btn-outline-info" @click="showPeerDetails(peer)">Details</button>
-                            </td>
-                          </tr>
-                        </template>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <!-- Network Statistics -->
-                <div class="mt-3" x-show="tailscaleStatus.connected">
-                  <h6>Network Statistics</h6>
-                  <div class="row">
-                    <div class="col-md-6">
-                      <div class="card">
-                        <div class="card-body">
-                          <h6 class="card-title">Connection Stats</h6>
-                          <div class="mb-2">
-                            <strong>Total Peers:</strong> <span x-text="tailscaleStatus.peers.length"></span>
-                            <div class="progress mt-1">
-                              <div class="progress-bar bg-success" role="progressbar" 
-                                   :style="'width: ' + (tailscaleStatus.peers.filter(p => p.online).length / tailscaleStatus.peers.length * 100) + '%'"
-                                   :aria-valuenow="tailscaleStatus.peers.filter(p => p.online).length"
-                                   :aria-valuemax="tailscaleStatus.peers.length">
-                                <span x-text="tailscaleStatus.peers.filter(p => p.online).length + ' Online'"></span>
-                              </div>
-                            </div>
-                          </div>
-                          <div class="mb-2">
-                            <strong>Network Latency:</strong> <span x-text="tailscaleStatus.avgLatency + ' ms'"></span>
-                            <div class="progress mt-1">
-                              <div class="progress-bar" :class="getLatencyClass()" role="progressbar" 
-                                   :style="'width: ' + (tailscaleStatus.avgLatency / 100) + '%'"
-                                   :aria-valuenow="tailscaleStatus.avgLatency"
-                                   aria-valuemax="100">
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="col-md-6">
-                      <div class="card">
-                        <div class="card-body">
-                          <h6 class="card-title">Advanced Controls</h6>
-                          <div class="btn-group-vertical w-100">
-                            <button class="btn btn-sm btn-outline-secondary" @click="runCommand('tailscale_debug')">Debug Info</button>
-                            <button class="btn btn-sm btn-outline-secondary" @click="runCommand('tailscale_restart')">Restart Service</button>
-                            <button class="btn btn-sm btn-outline-secondary" @click="runCommand('tailscale_prefs')">View Preferences</button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Peer Details Modal -->
-                <div class="modal fade" id="peerDetailsModal" tabindex="-1">
-                  <div class="modal-dialog">
-                    <div class="modal-content">
-                      <div class="modal-header">
-                        <h5 class="modal-title">Peer Details</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                      </div>
-                      <div class="modal-body">
-                        <template x-if="selectedPeer">
-                          <div>
-                            <h6>Basic Information</h6>
-                            <p>
-                              <strong>Name:</strong> <span x-text="selectedPeer.name"></span><br>
-                              <strong>OS:</strong> <span x-text="selectedPeer.os"></span><br>
-                              <strong>Status:</strong> 
-                              <span :class="selectedPeer.online ? 'badge bg-success' : 'badge bg-danger'" 
-                                    x-text="selectedPeer.online ? 'Online' : 'Offline'"></span>
-                            </p>
-                            <h6>Network Information</h6>
-                            <p>
-                              <strong>Tailscale IPs:</strong><br>
-                              <span x-text="selectedPeer.tailscale_ips.join('\n')"></span><br>
-                              <strong>Allowed IPs:</strong><br>
-                              <span x-text="selectedPeer.allowed_ips.join('\n')"></span>
-                            </p>
-                            <h6>Connection Details</h6>
-                            <p>
-                              <strong>Last Seen:</strong> <span x-text="selectedPeer.last_seen"></span><br>
-                              <strong>Connection Type:</strong> <span x-text="selectedPeer.connection_type || 'Unknown'"></span>
-                            </p>
-                          </div>
-                        </template>
-                      </div>
-                    </div>
-                  </div>
+                      </template>
+                    </tbody>
+                  </table>
                 </div>
               </div>
-              <div class="card-footer">Manage Tailscale connectivity and authentication.</div>
             </div>
           </div>
         </div>
-    
+
+        <!-- SSH Key Management -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header">
+                <h5 class="mb-0">SSH Key Management</h5>
+              </div>
+              <div class="card-body">
+                <div class="input-group mb-3">
+                  <input type="file" id="keyFile" accept=".pub,.txt" class="form-control" />
+                  <button class="btn btn-primary" @click="uploadKey">
+                    <i class="bi bi-upload"></i> Upload Key
+                  </button>
+                </div>
+                <div class="peer-list">
+                  <template x-for="(key, index) in sshKeys" :key="index">
+                    <div class="peer-item d-flex justify-content-between align-items-center">
+                      <code x-text="key.substring(0, 50) + (key.length > 50 ? '...' : '')"></code>
+                      <button class="btn btn-sm btn-danger" @click="removeKey(index)">
+                        <i class="bi bi-trash"></i> Remove
+                      </button>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Output Log -->
         <div class="row">
-          <div class="col">
+          <div class="col-12">
             <div class="card">
-              <div class="card-header"><h5>Output Log</h5></div>
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Output Log</h5>
+                <button class="btn btn-sm btn-outline-secondary" @click="clearLog">
+                  <i class="bi i-trash"></i> Clear
+                </button>
+              </div>
               <div class="card-body">
                 <textarea class="form-control" rows="10" x-model="logOutput" readonly></textarea>
               </div>
-              <div class="card-footer">Command responses and log output.</div>
             </div>
           </div>
         </div>
       </div>
     </main>
-    
+
+    <!-- Peer Details Modal -->
+    <div class="modal fade" id="peerDetailsModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Peer Details</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <template x-if="selectedPeer">
+              <div>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <div class="stats-card">
+                      <div class="stats-value" x-text="selectedPeer.name"></div>
+                      <div class="stats-label">Name</div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="stats-card">
+                      <div class="stats-value" x-text="selectedPeer.os"></div>
+                      <div class="stats-label">OS</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <div class="stats-card">
+                      <div class="stats-value" :class="selectedPeer.online ? 'text-success' : 'text-danger'"
+                           x-text="selectedPeer.online ? 'Online' : 'Offline'"></div>
+                      <div class="stats-label">Status</div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="stats-card">
+                      <div class="stats-value" x-text="selectedPeer.last_seen"></div>
+                      <div class="stats-label">Last Seen</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card mb-3">
+                  <div class="card-header">Network Information</div>
+                  <div class="card-body">
+                    <h6>Tailscale IPs</h6>
+                    <code class="d-block mb-2" x-text="selectedPeer.tailscale_ips.join('\n')"></code>
+                    <h6>Allowed IPs</h6>
+                    <code class="d-block" x-text="selectedPeer.allowed_ips.join('\n')"></code>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="js/dark-mode.js"></script>
-    <!-- Include Cytoscape.js for interactive graph -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.0/cytoscape.min.js"></script>
     <script>
       function devControls() {
@@ -333,27 +526,32 @@
           cy: null,
           lastPeersJson: "",
           selectedPeer: null,
-    
+
           runCommand(action, param = null) {
             let url = '/cgi-bin/dev_controls?action=' + action;
             if (param !== null) { url += '&port=' + param; }
             fetch(url)
               .then(response => response.json())
               .then(data => {
-                if (data.error) { this.logOutput += "Error: " + data.error + "\n"; }
-                else if (data.status) { this.logOutput += data.status + "\n"; }
+                if (data.error) { 
+                  this.logOutput += "Error: " + data.error + "\n"; 
+                }
+                else if (data.status) { 
+                  this.logOutput += data.status + "\n"; 
+                }
                 this.fetchAllStatus();
               })
-              .catch(error => { this.logOutput += "Fetch error: " + error + "\n"; });
+              .catch(error => { 
+                this.logOutput += "Fetch error: " + error + "\n"; 
+              });
           },
-    
+
           fetchAllStatus() {
             fetch('/cgi-bin/dev_controls?action=all_status')
               .then(response => response.json())
               .then(data => {
                 if (data.ssh) { this.sshStatus = data.ssh; }
                 if (data.tailscale) {
-                  // Only update graph if peer data changed.
                   const newPeersJson = JSON.stringify(data.tailscale.peers);
                   this.updateTailscaleStatus(data.tailscale);
                   if(newPeersJson !== this.lastPeersJson) {
@@ -364,31 +562,43 @@
               })
               .catch(error => { console.error("Status fetch error:", error); });
           },
-    
+
           fetchKeys() {
             fetch('/cgi-bin/dev_controls?action=list_keys')
               .then(response => response.json())
-              .then(data => { if (data.keys) { this.sshKeys = data.keys; } })
+              .then(data => { 
+                if (data.keys) { 
+                  this.sshKeys = data.keys; 
+                }
+              })
               .catch(error => { console.error("Keys fetch error:", error); });
           },
-    
+
           removeKey(index) {
             if (confirm("Remove key at index " + index + "?")) {
               fetch('/cgi-bin/dev_controls?action=remove_key&port=' + index)
                 .then(response => response.json())
                 .then(data => {
-                  if (data.error) { alert("Error: " + data.error); }
-                  else { alert("Key removed."); this.fetchKeys(); }
+                  if (data.error) { 
+                    alert("Error: " + data.error); 
+                  }
+                  else { 
+                    alert("Key removed."); 
+                    this.fetchKeys(); 
+                  }
                 });
             }
           },
-    
+
           init() {
             this.fetchAllStatus();
             this.fetchKeys();
-            setInterval(() => { this.fetchAllStatus(); this.fetchKeys(); }, 5000);
+            setInterval(() => { 
+              this.fetchAllStatus(); 
+              this.fetchKeys(); 
+            }, 5000);
           },
-    
+
           uploadKey() {
             const fileInput = document.getElementById('keyFile');
             if (fileInput.files.length > 0) {
@@ -410,12 +620,18 @@
               alert("Please select a public key file.");
             }
           },
-    
+
           getGraphElements() {
             let elements = [];
             // Add central node "You"
-            elements.push({ data: { id: 'self', label: 'You' } });
-            // Add peer nodes and edges.
+            elements.push({ 
+              data: { 
+                id: 'self', 
+                label: 'You',
+                type: 'self'
+              } 
+            });
+            // Add peer nodes and edges
             this.tailscaleStatus.peers.forEach(peer => {
               elements.push({
                 data: {
@@ -423,16 +639,22 @@
                   label: peer.name,
                   os: peer.os,
                   online: peer.online,
-                  ips: peer.tailscale_ips.join(", ")
+                  ips: peer.tailscale_ips.join(", "),
+                  type: 'peer'
                 }
               });
               elements.push({
-                data: { id: 'edge-' + peer.id, source: 'self', target: peer.id }
+                data: { 
+                  id: 'edge-' + peer.id, 
+                  source: 'self', 
+                  target: peer.id,
+                  online: peer.online
+                }
               });
             });
             return elements;
           },
-    
+
           drawCytoscapeGraph() {
             const container = document.getElementById('graphContainer');
             if (this.cy) { this.cy.destroy(); }
@@ -441,27 +663,70 @@
               elements: this.getGraphElements(),
               style: [
                 {
-                  selector: 'node',
+                  selector: 'node[type="self"]',
                   style: {
                     'label': 'data(label)',
                     'text-valign': 'center',
-                    'color': '#000',
+                    'color': '#fff',
+                    'font-family': '"Fira Code", monospace',
+                    'background-color': 'var(--node-self)',
+                    'width': 60,
+                    'height': 60,
+                    'font-size': '16px',
+                    'text-outline-width': 2,
+                    'text-outline-color': 'var(--node-self)',
+                    'border-width': 2,
+                    'border-color': '#fff',
+                    'border-opacity': 0.5,
+                    'shadow-blur': 10,
+                    'shadow-color': 'var(--node-self)',
+                    'shadow-opacity': 0.5
+                  }
+                },
+                {
+                  selector: 'node[type="peer"]',
+                  style: {
+                    'label': 'data(label)',
+                    'text-valign': 'center',
+                    'color': '#fff',
                     'font-family': '"Fira Code", monospace',
                     'background-color': function(ele) {
-                      return ele.data('id') === "self" ? "#007bff" :
-                             (ele.data('online') === "true" || ele.data('online') === true ? "#59a14f" : "#d9534f");
+                      return ele.data('online') ? 'var(--node-peer-online)' : 'var(--node-peer-offline)';
                     },
                     'width': 50,
                     'height': 50,
-                    'font-size': '14px'
+                    'font-size': '14px',
+                    'text-outline-width': 2,
+                    'text-outline-color': function(ele) {
+                      return ele.data('online') ? 'var(--node-peer-online)' : 'var(--node-peer-offline)';
+                    },
+                    'border-width': 2,
+                    'border-color': '#fff',
+                    'border-opacity': 0.5,
+                    'shadow-blur': 8,
+                    'shadow-color': function(ele) {
+                      return ele.data('online') ? 'var(--node-peer-online)' : 'var(--node-peer-offline)';
+                    },
+                    'shadow-opacity': 0.5
                   }
                 },
                 {
                   selector: 'edge',
                   style: {
-                    'width': 2,
-                    'line-color': '#ccc',
-                    'curve-style': 'bezier'
+                    'width': 3,
+                    'line-color': function(ele) {
+                      return ele.data('online') ? 'var(--edge-online)' : 'var(--edge-offline)';
+                    },
+                    'curve-style': 'bezier',
+                    'opacity': 0.8,
+                    'line-style': function(ele) {
+                      return ele.data('online') ? 'solid' : 'dashed';
+                    },
+                    'target-arrow-shape': 'triangle',
+                    'target-arrow-color': function(ele) {
+                      return ele.data('online') ? 'var(--edge-online)' : 'var(--edge-offline)';
+                    },
+                    'arrow-scale': 1.5
                   }
                 }
               ],
@@ -470,11 +735,14 @@
                 padding: 50,
                 animate: true,
                 animationDuration: 500,
-                randomize: true
+                randomize: true,
+                nodeRepulsion: 4000,
+                idealEdgeLength: 100,
+                edgeElasticity: 0.45
               }
             });
-    
-            // On node tap, show persistent tooltip.
+
+            // On node tap, show persistent tooltip
             this.cy.on('tap', 'node', (evt) => {
               const node = evt.target;
               const pos = node.renderedPosition();
@@ -482,15 +750,37 @@
               tooltip.style.display = "block";
               tooltip.style.left = (pos.x + 20) + "px";
               tooltip.style.top = (pos.y - 20) + "px";
-              let content = `<strong>${node.data('label')}</strong><br>`;
-              content += `OS: ${node.data('os') || 'N/A'}<br>`;
-              content += `Online: ${node.data('online') ? "Yes" : "No"}<br>`;
-              content += `IPs: ${node.data('ips') || 'N/A'}<br>`;
-              content += `<a href="/node.html?id=${node.id()}" target="_blank">Details</a>`;
+              
+              const statusClass = node.data('online') ? 'status-online' : 'status-offline';
+              const statusText = node.data('online') ? 'Online' : 'Offline';
+              
+              let content = `
+                <div class="d-flex align-items-center mb-2">
+                  <span class="status-indicator ${statusClass}"></span>
+                  <strong class="ms-2">${node.data('label')}</strong>
+                </div>
+                <div class="mb-2">
+                  <small class="text-muted">OS:</small><br>
+                  <code>${node.data('os') || 'N/A'}</code>
+                </div>
+                <div class="mb-2">
+                  <small class="text-muted">Status:</small><br>
+                  <span class="badge ${statusClass}">${statusText}</span>
+                </div>
+                <div class="mb-2">
+                  <small class="text-muted">IPs:</small><br>
+                  <code>${node.data('ips') || 'N/A'}</code>
+                </div>
+                <div class="mt-2">
+                  <a href="/node.html?id=${node.id()}" target="_blank" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-info-circle"></i> Details
+                  </a>
+                </div>
+              `;
               tooltip.innerHTML = content;
             });
-    
-            // Hide tooltip when clicking outside.
+
+            // Hide tooltip when clicking outside
             document.addEventListener('click', (e) => {
               const tooltip = document.getElementById('tooltip');
               const container = document.getElementById('graphContainer');
@@ -499,7 +789,7 @@
               }
             });
           },
-    
+
           toggleGraphLayout(layoutName) {
             if (!this.cy) return;
             const layout = this.cy.layout({
@@ -511,7 +801,7 @@
             });
             layout.run();
           },
-    
+
           updateTailscaleStatus(data) {
             this.tailscaleStatus = {
               ...this.tailscaleStatus,
@@ -519,32 +809,30 @@
               lastUpdate: new Date().toLocaleTimeString()
             };
             
-            // Extract additional status information
             if (data.output) {
               const output = data.output.toLowerCase();
               this.tailscaleStatus.dnsStatus = output.includes('dns: enabled') ? 'Enabled' : 'Disabled';
               
-              // Extract your IP
               const ipMatch = data.output.match(/your ip is: ([0-9.]+)/i);
               if (ipMatch) {
                 this.tailscaleStatus.yourIP = ipMatch[1];
               }
             }
           },
-    
+
           pingPeer(id) {
             this.runCommand('tailscale_ping', id);
           },
-    
+
           showPeerDetails(peer) {
             this.selectedPeer = peer;
+            const modal = new bootstrap.Modal(document.getElementById('peerDetailsModal'));
+            modal.show();
           },
-    
-          getLatencyClass() {
-            if (this.tailscaleStatus.avgLatency < 50) return 'bg-success';
-            if (this.tailscaleStatus.avgLatency < 100) return 'bg-warning';
-            return 'bg-danger';
-          },
+
+          clearLog() {
+            this.logOutput = "";
+          }
         };
       }
     </script>
