@@ -673,8 +673,7 @@
                     'width': 60,
                     'height': 60,
                     'font-size': '16px',
-                    'text-outline-width': 2,
-                    'text-outline-color': '#9b59b6',
+                    'text-outline-width': 0,
                     'border-width': 2,
                     'border-color': '#fff',
                     'border-opacity': 0.5
@@ -693,10 +692,7 @@
                     'width': 50,
                     'height': 50,
                     'font-size': '14px',
-                    'text-outline-width': 2,
-                    'text-outline-color': function(ele) {
-                      return ele.data('online') ? '#2ecc71' : '#e74c3c';
-                    },
+                    'text-outline-width': 0,
                     'border-width': 2,
                     'border-color': '#fff',
                     'border-opacity': 0.5
@@ -749,7 +745,7 @@
                 </div>
                 <div class="mb-2">
                   <small class="text-muted">Status:</small><br>
-                  <span class="badge ${statusClass}">${statusText}</span>
+                  <span class="badge bg-opacity-25 ${statusClass}">${statusText}</span>
                 </div>
                 <div class="mb-2">
                   <small class="text-muted">IPs:</small><br>
@@ -809,7 +805,22 @@
 
           pingPeer(id) {
             if (!id) return;
-            fetch('/cgi-bin/dev_controls?action=tailscale_ping&port=' + id)
+            // First get the peer's hostname or IP
+            const peer = this.tailscaleStatus.peers.find(p => p.id === id);
+            if (!peer) {
+              this.logOutput += "Error: Peer not found\n";
+              return;
+            }
+
+            // Use the first Tailscale IP for pinging
+            const peerIP = peer.tailscale_ips[0];
+            if (!peerIP) {
+              this.logOutput += "Error: No IP address found for peer\n";
+              return;
+            }
+
+            // Run ping with verbose output and 4 packets
+            fetch('/cgi-bin/dev_controls?action=tailscale_ping&port=' + peerIP + '&count=4&verbose=true')
               .then(response => response.json())
               .then(data => {
                 if (data.error) {
@@ -817,7 +828,44 @@
                 } else if (data.status) {
                   this.logOutput += data.status + "\n";
                   if (data.output) {
-                    this.logOutput += data.output + "\n";
+                    // Parse and format the ping output
+                    const lines = data.output.split('\n');
+                    let stats = {
+                      sent: 0,
+                      received: 0,
+                      lost: 0,
+                      min: null,
+                      max: null,
+                      avg: null
+                    };
+
+                    lines.forEach(line => {
+                      if (line.includes('pong')) {
+                        const match = line.match(/pong from ([^ ]+) \((\d+\.\d+\.\d+\.\d+)\) in (\d+\.\d+)ms/);
+                        if (match) {
+                          const [, host, ip, latency] = match;
+                          const latencyNum = parseFloat(latency);
+                          stats.received++;
+                          if (stats.min === null || latencyNum < stats.min) stats.min = latencyNum;
+                          if (stats.max === null || latencyNum > stats.max) stats.max = latencyNum;
+                          this.logOutput += `Ping to ${host} (${ip}): ${latency}ms\n`;
+                        }
+                      } else if (line.includes('direct')) {
+                        this.logOutput += `Connection type: Direct\n`;
+                      } else if (line.includes('DERP')) {
+                        this.logOutput += `Connection type: DERP relay\n`;
+                      }
+                    });
+
+                    // Calculate statistics
+                    stats.sent = 4; // We sent 4 packets
+                    stats.lost = stats.sent - stats.received;
+                    if (stats.received > 0) {
+                      stats.avg = (stats.min + stats.max) / 2;
+                      this.logOutput += `\nPing statistics:\n`;
+                      this.logOutput += `Packets: Sent = ${stats.sent}, Received = ${stats.received}, Lost = ${stats.lost} (${(stats.lost/stats.sent*100).toFixed(1)}% loss)\n`;
+                      this.logOutput += `Round-trip min/avg/max = ${stats.min}/${stats.avg.toFixed(2)}/${stats.max} ms\n`;
+                    }
                   }
                 }
                 this.fetchAllStatus();
