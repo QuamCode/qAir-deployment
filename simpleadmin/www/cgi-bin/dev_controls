@@ -49,7 +49,49 @@ get_ssh_status() {
   fi
   ssh_port=$(grep -E '^[[:space:]]*Port ' /etc/ssh/sshd_config | tail -n1 | sed 's/^[#[:space:]]*Port //')
   [ -z "$ssh_port" ] && ssh_port="22"
-  echo "{\"enabled\": $enabled, \"port\": \"$ssh_port\"}"
+
+  # Get authentication method
+  auth_method="both"
+  if grep -qE '^[[:space:]]*PasswordAuthentication[[:space:]]+no' /etc/ssh/sshd_config; then
+    auth_method="pubkey"
+  elif grep -qE '^[[:space:]]*PubkeyAuthentication[[:space:]]+no' /etc/ssh/sshd_config; then
+    auth_method="password"
+  fi
+
+  echo "{\"enabled\": $enabled, \"port\": \"$ssh_port\", \"authMethod\": \"$auth_method\"}"
+}
+
+# --- Helper: Set SSH authentication method ---
+set_ssh_auth() {
+  method="$1"
+  case "$method" in
+    "password")
+      $SUDO sed -i -E 's/^[#[:space:]]*PasswordAuthentication[[:space:]]+.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+      $SUDO sed -i -E 's/^[#[:space:]]*PubkeyAuthentication[[:space:]]+.*/PubkeyAuthentication no/' /etc/ssh/sshd_config
+      ;;
+    "pubkey")
+      $SUDO sed -i -E 's/^[#[:space:]]*PasswordAuthentication[[:space:]]+.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+      $SUDO sed -i -E 's/^[#[:space:]]*PubkeyAuthentication[[:space:]]+.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+      ;;
+    "both")
+      $SUDO sed -i -E 's/^[#[:space:]]*PasswordAuthentication[[:space:]]+.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+      $SUDO sed -i -E 's/^[#[:space:]]*PubkeyAuthentication[[:space:]]+.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+      ;;
+    *)
+      echo '{"error": "Invalid authentication method"}' && exit 1
+      ;;
+  esac
+
+  # Restart SSH service to apply changes
+  if ! $SUDO $SYSTEMCTL restart sshd 2>/dev/null; then
+    if ! service sshd restart 2>/dev/null; then
+      echo '{"error": "Failed to restart sshd"}' && exit 1
+    fi
+  fi
+
+  sleep 1
+  ssh_json=$(get_ssh_status)
+  echo "{\"status\": \"SSH authentication method set to $method\", \"ssh\": $ssh_json}"
 }
 
 # --- Helper: Sanitize output ---
@@ -214,6 +256,13 @@ case "$action" in
       echo '{"error": "Port not provided"}'
     fi
     ;;
+  "ssh_set_auth")
+    if [ -n "$param" ]; then
+      set_ssh_auth "$param"
+    else
+      echo '{"error": "Authentication method not provided"}' && exit 1
+    fi
+    ;;
   "upload_key")
     if [ -n "$uploaded_key" ]; then
       mkdir -p /root/.ssh && chmod 700 /root/.ssh
@@ -232,6 +281,15 @@ case "$action" in
       remove_key
     else
       echo '{"error": "Key index not provided"}'
+    fi
+    ;;
+  "clear_all_keys")
+    AUTH_FILE="/root/.ssh/authorized_keys"
+    if [ -f "$AUTH_FILE" ]; then
+      > "$AUTH_FILE"
+      echo "{\"status\": \"All keys removed\"}"
+    else
+      echo "{\"error\": \"Authorized keys file not found\"}"
     fi
     ;;
   "tailscale_status")

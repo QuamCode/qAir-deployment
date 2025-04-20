@@ -361,6 +361,106 @@
                     Change Port
                   </button>
                 </div>
+
+                <!-- Authentication Settings -->
+                <div class="mt-4">
+                  <h6 class="mb-3">Authentication Settings</h6>
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="authMethod" id="authPassword" value="password" x-model="sshStatus.authMethod">
+                    <label class="form-check-label" for="authPassword">
+                      Password Authentication
+                    </label>
+                  </div>
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="authMethod" id="authPubkey" value="pubkey" x-model="sshStatus.authMethod">
+                    <label class="form-check-label" for="authPubkey">
+                      Public Key Authentication
+                    </label>
+                  </div>
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="authMethod" id="authBoth" value="both" x-model="sshStatus.authMethod">
+                    <label class="form-check-label" for="authBoth">
+                      Both Methods
+                    </label>
+                  </div>
+                  <button class="btn btn-primary mt-2" @click="updateAuthMethod">
+                    <i class="bi bi-save"></i> Update Authentication
+                  </button>
+                </div>
+
+                <!-- SSH Key Management -->
+                <div class="mt-4" x-show="sshStatus.authMethod === 'pubkey' || sshStatus.authMethod === 'both'">
+                  <h6 class="mb-3">SSH Key Management</h6>
+                  
+                  <!-- Key Upload Section -->
+                  <div class="card mb-3">
+                    <div class="card-body">
+                      <h6 class="card-title">Upload New Key</h6>
+                      <div class="input-group mb-2">
+                        <input type="file" id="keyFile" accept=".pub,.txt" class="form-control" />
+                        <button class="btn btn-primary" @click="uploadKey">
+                          <i class="bi bi-upload"></i> Upload Key
+                        </button>
+                      </div>
+                      <small class="text-muted">Supported formats: OpenSSH public key (.pub) or plain text</small>
+                    </div>
+                  </div>
+
+                  <!-- Existing Keys Section -->
+                  <div class="card">
+                    <div class="card-body">
+                      <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="card-title mb-0">Authorized Keys</h6>
+                        <button class="btn btn-sm btn-outline-danger" @click="clearAllKeys" :disabled="!sshKeys.length">
+                          <i class="bi bi-trash"></i> Clear All
+                        </button>
+                      </div>
+                      
+                      <div class="table-responsive">
+                        <table class="table table-hover">
+                          <thead>
+                            <tr>
+                              <th>Key Type</th>
+                              <th>Fingerprint</th>
+                              <th>Comment</th>
+                              <th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <template x-for="(key, index) in sshKeys" :key="index">
+                              <tr>
+                                <td>
+                                  <span class="badge bg-info" x-text="getKeyType(key)"></span>
+                                </td>
+                                <td>
+                                  <code x-text="getKeyFingerprint(key)"></code>
+                                </td>
+                                <td>
+                                  <span x-text="getKeyComment(key)"></span>
+                                </td>
+                                <td>
+                                  <button class="btn btn-sm btn-outline-danger" @click="removeKey(index)">
+                                    <i class="bi bi-trash"></i>
+                                  </button>
+                                  <button class="btn btn-sm btn-outline-primary" @click="copyKey(key)">
+                                    <i class="bi bi-clipboard"></i>
+                                  </button>
+                                </td>
+                              </tr>
+                            </template>
+                            <template x-if="!sshKeys.length">
+                              <tr>
+                                <td colspan="4" class="text-center text-muted">
+                                  No authorized keys found
+                                </td>
+                              </tr>
+                            </template>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -483,35 +583,6 @@
           </div>
         </div>
 
-        <!-- SSH Key Management -->
-        <div class="row mb-4">
-          <div class="col-12">
-            <div class="card">
-              <div class="card-header">
-                <h5 class="mb-0">SSH Key Management</h5>
-              </div>
-              <div class="card-body">
-                <div class="input-group mb-3">
-                  <input type="file" id="keyFile" accept=".pub,.txt" class="form-control" />
-                  <button class="btn btn-primary" @click="uploadKey">
-                    <i class="bi bi-upload"></i> Upload Key
-                  </button>
-                </div>
-                <div class="peer-list">
-                  <template x-for="(key, index) in sshKeys" :key="index">
-                    <div class="peer-item d-flex justify-content-between align-items-center">
-                      <code x-text="key.substring(0, 50) + (key.length > 50 ? '...' : '')"></code>
-                      <button class="btn btn-sm btn-danger" @click="removeKey(index)">
-                        <i class="bi bi-trash"></i> Remove
-                      </button>
-                    </div>
-                  </template>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-    
         <!-- Output Log -->
         <div class="row">
           <div class="col-12">
@@ -536,7 +607,7 @@
     <script>
       function devControls() {
         return {
-          sshStatus: { enabled: false, port: "22" },
+          sshStatus: { enabled: false, port: "22", authMethod: "both" },
           tailscaleStatus: { 
             connected: false, 
             statusText: "Stopped", 
@@ -861,6 +932,7 @@
                         max: null,
                         avg: null,
                         connectionType: 'Unknown',
+                        derpServer: '',
                         rawOutput: rawOutput
                       };
 
@@ -874,6 +946,7 @@
                             stats.received++;
                             if (stats.min === null || latencyNum < stats.min) stats.min = latencyNum;
                             if (stats.max === null || latencyNum > stats.max) stats.max = latencyNum;
+                            stats.derpServer = derp;
                             this.logOutput += `Ping to ${host} (${ip}) via ${derp}: ${latency}ms\n`;
                           }
                         }
@@ -954,6 +1027,19 @@
                 <small class="text-muted">IPs:</small><br>
                 <code>${node.data('ips') || 'N/A'}</code>
               </div>
+              ${peer && peer.pingStats ? `
+                <div class="mb-2">
+                  <small class="text-muted">Connection:</small><br>
+                  <span class="badge bg-opacity-25 ${peer.pingStats.connectionType === 'Direct' ? 'bg-success' : 'bg-warning'} text-white">
+                    ${peer.pingStats.connectionType}
+                  </span>
+                  ${peer.pingStats.connectionType === 'DERP relay' ? `<br><small class="text-muted">via ${peer.pingStats.derpServer}</small>` : ''}
+                </div>
+                <div class="mb-2">
+                  <small class="text-muted">Ping Stats:</small><br>
+                  <small>Min: ${peer.pingStats.min}ms | Avg: ${peer.pingStats.avg.toFixed(0)}ms | Max: ${peer.pingStats.max}ms</small>
+                </div>
+              ` : ''}
               <div class="mt-2">
                 <a href="https://login.tailscale.com/admin/machines/${node.data('ips').split(',')[0]}" target="_blank" class="btn btn-sm btn-outline-primary">
                   <i class="bi bi-box-arrow-up-right"></i> TS Console
@@ -969,6 +1055,75 @@
     
           clearLog() {
             this.logOutput = "";
+          },
+    
+          updateAuthMethod() {
+            fetch('/cgi-bin/dev_controls?action=ssh_set_auth&method=' + this.sshStatus.authMethod)
+              .then(response => response.json())
+              .then(data => {
+                if (data.error) {
+                  this.logOutput += "Error: " + data.error + "\n";
+                } else {
+                  this.logOutput += "Authentication method updated to: " + this.sshStatus.authMethod + "\n";
+                  this.fetchAllStatus();
+                }
+              })
+              .catch(error => {
+                this.logOutput += "Error updating authentication method: " + error + "\n";
+              });
+          },
+
+          copyKey(key) {
+            navigator.clipboard.writeText(key)
+              .then(() => {
+                this.logOutput += "Key copied to clipboard\n";
+              })
+              .catch(err => {
+                this.logOutput += "Failed to copy key: " + err + "\n";
+              });
+          },
+
+          clearAllKeys() {
+            if (confirm("Are you sure you want to remove all authorized keys? This will prevent SSH access until new keys are added.")) {
+              fetch('/cgi-bin/dev_controls?action=clear_all_keys')
+                .then(response => response.json())
+                .then(data => {
+                  if (data.error) {
+                    this.logOutput += "Error: " + data.error + "\n";
+                  } else {
+                    this.logOutput += "All keys removed\n";
+                    this.fetchKeys();
+                  }
+                })
+                .catch(error => {
+                  this.logOutput += "Error removing keys: " + error + "\n";
+                });
+            }
+          },
+
+          getKeyType(key) {
+            if (key.includes('ssh-rsa')) return 'RSA';
+            if (key.includes('ssh-ed25519')) return 'ED25519';
+            if (key.includes('ecdsa-sha2-nistp256')) return 'ECDSA';
+            return 'Unknown';
+          },
+
+          getKeyFingerprint(key) {
+            // Extract the key part (everything after the key type and before the comment)
+            const keyPart = key.split(' ')[1];
+            if (!keyPart) return 'Invalid key';
+            
+            // Create a simple fingerprint by taking first and last 8 characters
+            return keyPart.substring(0, 8) + '...' + keyPart.substring(keyPart.length - 8);
+          },
+
+          getKeyComment(key) {
+            // Extract the comment (everything after the key)
+            const parts = key.split(' ');
+            if (parts.length > 2) {
+              return parts.slice(2).join(' ');
+            }
+            return 'No comment';
           }
         };
       }
