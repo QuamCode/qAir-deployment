@@ -268,6 +268,51 @@ case "$action" in
     ts_json=$(get_tailscale_status)
     echo "{\"status\": \"Tailscale logged out\", \"tailscale\": $ts_json}"
     ;;
+  "tailscale_netcheck")
+    if [ -n "$($SUDO $TAILSCALE status 2>/dev/null)" ]; then
+      TS_OUT=$($SUDO $TAILSCALE netcheck 2>&1)
+      ts_json=$(get_tailscale_status)
+      echo "{\"status\": \"Network check completed\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
+    else
+      echo '{"error": "Tailscale is not running"}'
+    fi
+    ;;
+  "tailscale_ping")
+    if [ -n "$($SUDO $TAILSCALE status 2>/dev/null)" ]; then
+      TS_OUT=$($SUDO $TAILSCALE ping -c 4 "$param" 2>&1)
+      ts_json=$(get_tailscale_status)
+      echo "{\"status\": \"Ping completed\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
+    else
+      echo '{"error": "Tailscale is not running"}'
+    fi
+    ;;
+  "tailscale_debug")
+    if [ -n "$($SUDO $TAILSCALE status 2>/dev/null)" ]; then
+      TS_OUT=$($SUDO $TAILSCALE debug --json 2>&1)
+      ts_json=$(get_tailscale_status)
+      echo "{\"status\": \"Debug info retrieved\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
+    else
+      echo '{"error": "Tailscale is not running"}'
+    fi
+    ;;
+  "tailscale_restart")
+    if $SUDO $SYSTEMCTL restart tailscaled 2>/dev/null; then
+      sleep 2
+      ts_json=$(get_tailscale_status)
+      echo "{\"status\": \"Tailscale service restarted\", \"tailscale\": $ts_json}"
+    else
+      echo '{"error": "Failed to restart Tailscale service"}'
+    fi
+    ;;
+  "tailscale_prefs")
+    if [ -n "$($SUDO $TAILSCALE status 2>/dev/null)" ]; then
+      TS_OUT=$($SUDO $TAILSCALE prefs 2>&1)
+      ts_json=$(get_tailscale_status)
+      echo "{\"status\": \"Preferences retrieved\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
+    else
+      echo '{"error": "Tailscale is not running"}'
+    fi
+    ;;
   "all_status")
     ssh_json=$(get_ssh_status)
     ts_json=$(get_tailscale_status)

@@ -129,6 +129,13 @@
                       <a :href="tailscaleStatus.loginURL" target="_blank" x-text="tailscaleStatus.loginURL"></a>
                     </span>
                   </template>
+                  <template x-if="tailscaleStatus.connected">
+                    <div class="mt-2">
+                      <strong>Your IP:</strong> <span x-text="tailscaleStatus.yourIP"></span><br>
+                      <strong>DNS Status:</strong> <span x-text="tailscaleStatus.dnsStatus"></span><br>
+                      <strong>Last Update:</strong> <span x-text="tailscaleStatus.lastUpdate"></span>
+                    </div>
+                  </template>
                 </p>
                 <!-- Button groups -->
                 <div class="d-flex flex-wrap gap-2">
@@ -143,11 +150,143 @@
                     <button class="btn btn-warning" @click="runCommand('tailscale_login')" :disabled="tailscaleStatus.connected">Login</button>
                     <button class="btn btn-danger" @click="runCommand('tailscale_logout')" :disabled="!tailscaleStatus.connected">Logout</button>
                   </div>
+                  <!-- Additional controls -->
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-info" @click="runCommand('tailscale_status')" :disabled="!tailscaleStatus.connected">Refresh Status</button>
+                    <button class="btn btn-secondary" @click="runCommand('tailscale_netcheck')" :disabled="!tailscaleStatus.connected">Network Check</button>
+                  </div>
                 </div>
                 <!-- Peer Graph -->
                 <div id="peerGraph" x-show="tailscaleStatus.connected" style="position:relative; margin-top:1rem;">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Network Peers</h6>
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn btn-outline-secondary" @click="toggleGraphLayout('cose')">Force-Directed</button>
+                      <button class="btn btn-outline-secondary" @click="toggleGraphLayout('circle')">Circular</button>
+                    </div>
+                  </div>
                   <div id="graphContainer" style="width:400px; height:300px; border:1px solid #ddd;"></div>
                   <div id="tooltip"></div>
+                </div>
+                <!-- Peer List -->
+                <div class="mt-3" x-show="tailscaleStatus.connected">
+                  <h6>Detailed Peer List</h6>
+                  <div class="table-responsive">
+                    <table class="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>OS</th>
+                          <th>Status</th>
+                          <th>Last Seen</th>
+                          <th>IPs</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <template x-for="peer in tailscaleStatus.peers" :key="peer.id">
+                          <tr>
+                            <td x-text="peer.name"></td>
+                            <td x-text="peer.os"></td>
+                            <td>
+                              <span :class="peer.online ? 'badge bg-success' : 'badge bg-danger'" x-text="peer.online ? 'Online' : 'Offline'"></span>
+                            </td>
+                            <td x-text="peer.last_seen"></td>
+                            <td x-text="peer.tailscale_ips.join(', ')"></td>
+                            <td>
+                              <button class="btn btn-sm btn-outline-primary" @click="pingPeer(peer.id)">Ping</button>
+                              <button class="btn btn-sm btn-outline-info" @click="showPeerDetails(peer)">Details</button>
+                            </td>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Network Statistics -->
+                <div class="mt-3" x-show="tailscaleStatus.connected">
+                  <h6>Network Statistics</h6>
+                  <div class="row">
+                    <div class="col-md-6">
+                      <div class="card">
+                        <div class="card-body">
+                          <h6 class="card-title">Connection Stats</h6>
+                          <div class="mb-2">
+                            <strong>Total Peers:</strong> <span x-text="tailscaleStatus.peers.length"></span>
+                            <div class="progress mt-1">
+                              <div class="progress-bar bg-success" role="progressbar" 
+                                   :style="'width: ' + (tailscaleStatus.peers.filter(p => p.online).length / tailscaleStatus.peers.length * 100) + '%'"
+                                   :aria-valuenow="tailscaleStatus.peers.filter(p => p.online).length"
+                                   :aria-valuemax="tailscaleStatus.peers.length">
+                                <span x-text="tailscaleStatus.peers.filter(p => p.online).length + ' Online'"></span>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="mb-2">
+                            <strong>Network Latency:</strong> <span x-text="tailscaleStatus.avgLatency + ' ms'"></span>
+                            <div class="progress mt-1">
+                              <div class="progress-bar" :class="getLatencyClass()" role="progressbar" 
+                                   :style="'width: ' + (tailscaleStatus.avgLatency / 100) + '%'"
+                                   :aria-valuenow="tailscaleStatus.avgLatency"
+                                   aria-valuemax="100">
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="card">
+                        <div class="card-body">
+                          <h6 class="card-title">Advanced Controls</h6>
+                          <div class="btn-group-vertical w-100">
+                            <button class="btn btn-sm btn-outline-secondary" @click="runCommand('tailscale_debug')">Debug Info</button>
+                            <button class="btn btn-sm btn-outline-secondary" @click="runCommand('tailscale_restart')">Restart Service</button>
+                            <button class="btn btn-sm btn-outline-secondary" @click="runCommand('tailscale_prefs')">View Preferences</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Peer Details Modal -->
+                <div class="modal fade" id="peerDetailsModal" tabindex="-1">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title">Peer Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body">
+                        <template x-if="selectedPeer">
+                          <div>
+                            <h6>Basic Information</h6>
+                            <p>
+                              <strong>Name:</strong> <span x-text="selectedPeer.name"></span><br>
+                              <strong>OS:</strong> <span x-text="selectedPeer.os"></span><br>
+                              <strong>Status:</strong> 
+                              <span :class="selectedPeer.online ? 'badge bg-success' : 'badge bg-danger'" 
+                                    x-text="selectedPeer.online ? 'Online' : 'Offline'"></span>
+                            </p>
+                            <h6>Network Information</h6>
+                            <p>
+                              <strong>Tailscale IPs:</strong><br>
+                              <span x-text="selectedPeer.tailscale_ips.join('\n')"></span><br>
+                              <strong>Allowed IPs:</strong><br>
+                              <span x-text="selectedPeer.allowed_ips.join('\n')"></span>
+                            </p>
+                            <h6>Connection Details</h6>
+                            <p>
+                              <strong>Last Seen:</strong> <span x-text="selectedPeer.last_seen"></span><br>
+                              <strong>Connection Type:</strong> <span x-text="selectedPeer.connection_type || 'Unknown'"></span>
+                            </p>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="card-footer">Manage Tailscale connectivity and authentication.</div>
@@ -177,12 +316,23 @@
       function devControls() {
         return {
           sshStatus: { enabled: false, port: "22" },
-          tailscaleStatus: { connected: false, statusText: "Stopped", output: "", loginURL: "", peers: [] },
+          tailscaleStatus: { 
+            connected: false, 
+            statusText: "Stopped", 
+            output: "", 
+            loginURL: "", 
+            peers: [],
+            yourIP: "",
+            dnsStatus: "",
+            lastUpdate: "",
+            avgLatency: 0
+          },
           sshKeys: [],
           newSshPort: "",
           logOutput: "",
           cy: null,
           lastPeersJson: "",
+          selectedPeer: null,
     
           runCommand(action, param = null) {
             let url = '/cgi-bin/dev_controls?action=' + action;
@@ -205,7 +355,7 @@
                 if (data.tailscale) {
                   // Only update graph if peer data changed.
                   const newPeersJson = JSON.stringify(data.tailscale.peers);
-                  this.tailscaleStatus = data.tailscale;
+                  this.updateTailscaleStatus(data.tailscale);
                   if(newPeersJson !== this.lastPeersJson) {
                     this.lastPeersJson = newPeersJson;
                     this.drawCytoscapeGraph();
@@ -310,7 +460,8 @@
                   selector: 'edge',
                   style: {
                     'width': 2,
-                    'line-color': '#ccc'
+                    'line-color': '#ccc',
+                    'curve-style': 'bezier'
                   }
                 }
               ],
@@ -318,7 +469,8 @@
                 name: 'cose',
                 padding: 50,
                 animate: true,
-                animationDuration: 500
+                animationDuration: 500,
+                randomize: true
               }
             });
     
@@ -346,7 +498,53 @@
                 tooltip.style.display = "none";
               }
             });
-          }
+          },
+    
+          toggleGraphLayout(layoutName) {
+            if (!this.cy) return;
+            const layout = this.cy.layout({
+              name: layoutName,
+              padding: 50,
+              animate: true,
+              animationDuration: 500,
+              randomize: true
+            });
+            layout.run();
+          },
+    
+          updateTailscaleStatus(data) {
+            this.tailscaleStatus = {
+              ...this.tailscaleStatus,
+              ...data,
+              lastUpdate: new Date().toLocaleTimeString()
+            };
+            
+            // Extract additional status information
+            if (data.output) {
+              const output = data.output.toLowerCase();
+              this.tailscaleStatus.dnsStatus = output.includes('dns: enabled') ? 'Enabled' : 'Disabled';
+              
+              // Extract your IP
+              const ipMatch = data.output.match(/your ip is: ([0-9.]+)/i);
+              if (ipMatch) {
+                this.tailscaleStatus.yourIP = ipMatch[1];
+              }
+            }
+          },
+    
+          pingPeer(id) {
+            this.runCommand('tailscale_ping', id);
+          },
+    
+          showPeerDetails(peer) {
+            this.selectedPeer = peer;
+          },
+    
+          getLatencyClass() {
+            if (this.tailscaleStatus.avgLatency < 50) return 'bg-success';
+            if (this.tailscaleStatus.avgLatency < 100) return 'bg-warning';
+            return 'bg-danger';
+          },
         };
       }
     </script>
