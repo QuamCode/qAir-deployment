@@ -333,11 +333,12 @@
                 <span class="status-indicator" :class="sshStatus.enabled ? 'status-online' : 'status-offline'"></span>
               </div>
               <div class="card-body">
-                <div class="row">
+                <!-- SSH Service Status -->
+                <div class="row mb-4">
                   <div class="col-md-6">
                     <div class="stats-card">
                       <div class="stats-value" x-text="sshStatus.enabled ? 'Active' : 'Inactive'"></div>
-                      <div class="stats-label">Status</div>
+                      <div class="stats-label">Service Status</div>
                     </div>
                   </div>
                   <div class="col-md-6">
@@ -347,116 +348,133 @@
                     </div>
                   </div>
                 </div>
-                <div class="btn-group w-100 mt-3">
+
+                <!-- Service Controls -->
+                <div class="btn-group w-100 mb-4">
                   <button class="btn btn-success" @click="runCommand('ssh_enable')" :disabled="sshStatus.enabled">
-                    <i class="bi bi-power"></i> Enable
+                    <i class="bi bi-power"></i> Enable Service
                   </button>
                   <button class="btn btn-danger" @click="runCommand('ssh_disable')" :disabled="!sshStatus.enabled">
-                    <i class="bi bi-power-off"></i> Disable
-                  </button>
-                </div>
-                <div class="input-group mt-3">
-                  <input type="number" class="form-control" placeholder="New SSH Port" x-model="newSshPort" />
-                  <button class="btn btn-secondary" @click="runCommand('ssh_change_port', newSshPort)">
-                    Change Port
+                    <i class="bi bi-power-off"></i> Disable Service
                   </button>
                 </div>
 
-                <!-- Authentication Settings -->
-                <div class="mt-4">
-                  <h6 class="mb-3">Authentication Settings</h6>
-                  <div class="form-check mb-2">
-                    <input class="form-check-input" type="radio" name="authMethod" id="authPassword" value="password" x-model="sshStatus.authMethod">
-                    <label class="form-check-label" for="authPassword">
-                      Password Authentication
-                    </label>
-                  </div>
-                  <div class="form-check mb-2">
-                    <input class="form-check-input" type="radio" name="authMethod" id="authPubkey" value="pubkey" x-model="sshStatus.authMethod">
-                    <label class="form-check-label" for="authPubkey">
-                      Public Key Authentication
-                    </label>
-                  </div>
-                  <div class="form-check mb-2">
-                    <input class="form-check-input" type="radio" name="authMethod" id="authBoth" value="both" x-model="sshStatus.authMethod">
-                    <label class="form-check-label" for="authBoth">
-                      Both Methods
-                    </label>
-                  </div>
-                  <button class="btn btn-primary mt-2" @click="updateAuthMethod">
-                    <i class="bi bi-save"></i> Update Authentication
-                  </button>
-                </div>
-
-                <!-- SSH Key Management -->
-                <div class="mt-4" x-show="sshStatus.authMethod === 'pubkey' || sshStatus.authMethod === 'both'">
-                  <h6 class="mb-3">SSH Key Management</h6>
-                  
-                  <!-- Key Upload Section -->
-                  <div class="card mb-3">
-                    <div class="card-body">
-                      <h6 class="card-title">Upload New Key</h6>
-                      <div class="input-group mb-2">
-                        <input type="file" id="keyFile" accept=".pub,.txt" class="form-control" />
-                        <button class="btn btn-primary" @click="uploadKey">
-                          <i class="bi bi-upload"></i> Upload Key
-                        </button>
-                      </div>
-                      <small class="text-muted">Supported formats: OpenSSH public key (.pub) or plain text</small>
+                <!-- Port Configuration -->
+                <div class="card mb-4">
+                  <div class="card-body">
+                    <h6 class="card-title">Port Configuration</h6>
+                    <div class="input-group">
+                      <input type="number" class="form-control" placeholder="New SSH Port" x-model="newSshPort" />
+                      <button class="btn btn-secondary" @click="runCommand('ssh_change_port', newSshPort)">
+                        <i class="bi bi-gear"></i> Change Port
+                      </button>
                     </div>
+                    <small class="text-muted">Default port: 22</small>
                   </div>
+                </div>
 
-                  <!-- Existing Keys Section -->
-                  <div class="card">
-                    <div class="card-body">
-                      <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="card-title mb-0">Authorized Keys</h6>
-                        <button class="btn btn-sm btn-outline-danger" @click="clearAllKeys" :disabled="!sshKeys.length">
-                          <i class="bi bi-trash"></i> Clear All
-                        </button>
+                <!-- Authentication Configuration -->
+                <div class="card mb-4">
+                  <div class="card-body">
+                    <h6 class="card-title">Authentication Settings</h6>
+                    <div class="form-check mb-2">
+                      <input class="form-check-input" type="radio" name="authMethod" id="authPassword" value="password" x-model="sshStatus.authMethod">
+                      <label class="form-check-label" for="authPassword">
+                        Password Authentication
+                      </label>
+                    </div>
+                    <div class="form-check mb-2">
+                      <input class="form-check-input" type="radio" name="authMethod" id="authPubkey" value="pubkey" x-model="sshStatus.authMethod">
+                      <label class="form-check-label" for="authPubkey">
+                        Public Key Authentication
+                      </label>
+                    </div>
+                    <div class="form-check mb-2">
+                      <input class="form-check-input" type="radio" name="authMethod" id="authBoth" value="both" x-model="sshStatus.authMethod">
+                      <label class="form-check-label" for="authBoth">
+                        Both Methods
+                      </label>
+                    </div>
+                    <button class="btn btn-primary mt-2" @click="updateAuthMethod(sshStatus.authMethod)">
+                      <i class="bi bi-save"></i> Update Authentication
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Key Management (Only shown when pubkey auth is enabled) -->
+                <div class="card" x-show="sshStatus.authMethod === 'pubkey' || sshStatus.authMethod === 'both'">
+                  <div class="card-body">
+                    <h6 class="card-title">SSH Key Management</h6>
+                    
+                    <!-- Key Upload Section -->
+                    <div class="card mb-3">
+                      <div class="card-body">
+                        <h6 class="card-title">Upload New Key</h6>
+                        <div class="input-group mb-2">
+                          <input type="file" id="keyFile" accept=".pub,.txt" class="form-control" @change="handleFileSelect" />
+                          <button class="btn btn-primary" @click="uploadKey" :disabled="!selectedFile">
+                            <i class="bi bi-upload"></i> Upload Key
+                          </button>
+                        </div>
+                        <small class="text-muted">Supported formats: OpenSSH public key (.pub) or plain text</small>
+                        <div class="mt-2" x-show="selectedFile">
+                          <span class="badge bg-info" x-text="selectedFile.name"></span>
+                        </div>
                       </div>
-                      
-                      <div class="table-responsive">
-                        <table class="table table-hover">
-                          <thead>
-                            <tr>
-                              <th>Key Type</th>
-                              <th>Fingerprint</th>
-                              <th>Comment</th>
-                              <th>Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <template x-for="(key, index) in sshKeys" :key="index">
+                    </div>
+
+                    <!-- Existing Keys Section -->
+                    <div class="card">
+                      <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                          <h6 class="card-title mb-0">Authorized Keys</h6>
+                          <button class="btn btn-sm btn-outline-danger" @click="clearAllKeys" :disabled="!sshKeys.length">
+                            <i class="bi bi-trash"></i> Clear All
+                          </button>
+                        </div>
+                        
+                        <div class="table-responsive">
+                          <table class="table table-hover">
+                            <thead>
                               <tr>
-                                <td>
-                                  <span class="badge bg-info" x-text="getKeyType(key)"></span>
-                                </td>
-                                <td>
-                                  <code x-text="getKeyFingerprint(key)"></code>
-                                </td>
-                                <td>
-                                  <span x-text="getKeyComment(key)"></span>
-                                </td>
-                                <td>
-                                  <button class="btn btn-sm btn-outline-danger" @click="removeKey(index)">
-                                    <i class="bi bi-trash"></i>
-                                  </button>
-                                  <button class="btn btn-sm btn-outline-primary" @click="copyKey(key)">
-                                    <i class="bi bi-clipboard"></i>
-                                  </button>
-                                </td>
+                                <th>Key Type</th>
+                                <th>Fingerprint</th>
+                                <th>Comment</th>
+                                <th>Actions</th>
                               </tr>
-                            </template>
-                            <template x-if="!sshKeys.length">
-                              <tr>
-                                <td colspan="4" class="text-center text-muted">
-                                  No authorized keys found
-                                </td>
-                              </tr>
-                            </template>
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              <template x-for="(key, index) in sshKeys" :key="index">
+                                <tr>
+                                  <td>
+                                    <span class="badge bg-info" x-text="getKeyType(key)"></span>
+                                  </td>
+                                  <td>
+                                    <code x-text="getKeyFingerprint(key)"></code>
+                                  </td>
+                                  <td>
+                                    <span x-text="getKeyComment(key)"></span>
+                                  </td>
+                                  <td>
+                                    <button class="btn btn-sm btn-outline-danger" @click="removeKey(index)">
+                                      <i class="bi bi-trash"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary" @click="copyKey(key)">
+                                      <i class="bi bi-clipboard"></i>
+                                    </button>
+                                  </td>
+                                </tr>
+                              </template>
+                              <template x-if="!sshKeys.length">
+                                <tr>
+                                  <td colspan="4" class="text-center text-muted">
+                                    No authorized keys found
+                                  </td>
+                                </tr>
+                              </template>
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -625,6 +643,7 @@
           cy: null,
           lastPeersJson: "",
           selectedPeer: null,
+          selectedFile: null,
     
           runCommand(action, param = null) {
             let url = '/cgi-bin/dev_controls?action=' + action;
@@ -713,26 +732,58 @@
             }, 2000); // Wait 2 seconds after initial load
           },
     
-          uploadKey() {
-            const fileInput = document.getElementById('keyFile');
-            if (fileInput.files.length > 0) {
-              const file = fileInput.files[0];
-              const reader = new FileReader();
-              reader.onload = () => {
-                fetch('/cgi-bin/dev_controls?action=upload_key', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'text/plain' },
-                  body: reader.result
-                }).then(() => {
-                  alert("SSH public key uploaded.");
-                  this.fetchKeys();
-                  this.fetchAllStatus();
-                });
-              };
-              reader.readAsText(file);
-            } else {
-              alert("Please select a public key file.");
+          handleFileSelect(event) {
+            this.selectedFile = event.target.files[0];
+          },
+    
+          updateAuthMethod(method) {
+            if (!method) {
+              this.logOutput += "Error: Please select an authentication method\n";
+              return;
             }
+            fetch('/cgi-bin/dev_controls?action=ssh_set_auth&method=' + method)
+              .then(response => response.json())
+              .then(data => {
+                if (data.error) {
+                  this.logOutput += "Error: " + data.error + "\n";
+                } else {
+                  this.logOutput += "Authentication method updated to: " + method + "\n";
+                  this.fetchAllStatus();
+                }
+              })
+              .catch(error => {
+                this.logOutput += "Error updating authentication method: " + error + "\n";
+              });
+          },
+    
+          uploadKey() {
+            if (!this.selectedFile) {
+              this.logOutput += "Error: Please select a key file first\n";
+              return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+              fetch('/cgi-bin/dev_controls?action=upload_key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: reader.result
+              })
+              .then(response => response.json())
+              .then(data => {
+                if (data.error) {
+                  this.logOutput += "Error: " + data.error + "\n";
+                } else {
+                  this.logOutput += "SSH public key uploaded successfully\n";
+                  this.selectedFile = null;
+                  document.getElementById('keyFile').value = '';
+                  this.fetchKeys();
+                }
+              })
+              .catch(error => {
+                this.logOutput += "Error uploading key: " + error + "\n";
+              });
+            };
+            reader.readAsText(this.selectedFile);
           },
     
           getGraphElements() {
@@ -1057,22 +1108,6 @@
             this.logOutput = "";
           },
     
-          updateAuthMethod() {
-            fetch('/cgi-bin/dev_controls?action=ssh_set_auth&method=' + this.sshStatus.authMethod)
-              .then(response => response.json())
-              .then(data => {
-                if (data.error) {
-                  this.logOutput += "Error: " + data.error + "\n";
-                } else {
-                  this.logOutput += "Authentication method updated to: " + this.sshStatus.authMethod + "\n";
-                  this.fetchAllStatus();
-                }
-              })
-              .catch(error => {
-                this.logOutput += "Error updating authentication method: " + error + "\n";
-              });
-          },
-
           copyKey(key) {
             navigator.clipboard.writeText(key)
               .then(() => {

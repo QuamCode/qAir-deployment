@@ -265,9 +265,36 @@ case "$action" in
     ;;
   "upload_key")
     if [ -n "$uploaded_key" ]; then
-      mkdir -p /root/.ssh && chmod 700 /root/.ssh
-      echo "$uploaded_key" >> /root/.ssh/authorized_keys
-      chmod 600 /root/.ssh/authorized_keys
+      # Ensure .ssh directory exists with correct permissions
+      if ! mkdir -p /root/.ssh 2>/dev/null; then
+        echo '{"error": "Failed to create .ssh directory"}' && exit 1
+      fi
+      
+      # Set correct permissions
+      if ! chmod 700 /root/.ssh 2>/dev/null; then
+        echo '{"error": "Failed to set .ssh directory permissions"}' && exit 1
+      fi
+      
+      # Validate key format
+      if ! echo "$uploaded_key" | grep -qE '^(ssh-(rsa|dss|ed25519)|ecdsa-sha2-nistp[0-9]+)'; then
+        echo '{"error": "Invalid key format"}' && exit 1
+      fi
+      
+      # Check if key already exists
+      if [ -f /root/.ssh/authorized_keys ] && grep -Fxq "$uploaded_key" /root/.ssh/authorized_keys; then
+        echo '{"error": "Key already exists"}' && exit 1
+      fi
+      
+      # Append key to authorized_keys
+      if ! echo "$uploaded_key" >> /root/.ssh/authorized_keys; then
+        echo '{"error": "Failed to write key"}' && exit 1
+      fi
+      
+      # Set correct permissions on authorized_keys
+      if ! chmod 600 /root/.ssh/authorized_keys; then
+        echo '{"error": "Failed to set key file permissions"}' && exit 1
+      fi
+      
       echo "{\"status\": \"SSH public key uploaded\"}"
     else
       echo '{"error": "No key provided"}'
