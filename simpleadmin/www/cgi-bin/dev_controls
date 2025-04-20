@@ -271,6 +271,8 @@ case "$action" in
   "tailscale_netcheck")
     if [ -n "$($SUDO $TAILSCALE status 2>/dev/null)" ]; then
       TS_OUT=$($SUDO $TAILSCALE netcheck 2>&1)
+      # Escape special characters and newlines
+      TS_OUT=$(echo "$TS_OUT" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
       ts_json=$(get_tailscale_status)
       echo "{\"status\": \"Network check completed\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
     else
@@ -279,16 +281,26 @@ case "$action" in
     ;;
   "tailscale_ping")
     if [ -n "$($SUDO $TAILSCALE status 2>/dev/null)" ]; then
-      TS_OUT=$($SUDO $TAILSCALE ping -c 4 "$param" 2>&1)
-      ts_json=$(get_tailscale_status)
-      echo "{\"status\": \"Ping completed\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
+      # Get the IP address for the peer
+      peer_ip=$(echo "$($SUDO $TAILSCALE status --json)" | $JQBINARY -r --arg id "$param" '.Peer[] | select(.ID == $id) | .TailscaleIPs[0]')
+      if [ -n "$peer_ip" ]; then
+        TS_OUT=$($SUDO $TAILSCALE ping -c 4 "$peer_ip" 2>&1)
+        # Escape special characters and newlines
+        TS_OUT=$(echo "$TS_OUT" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+        ts_json=$(get_tailscale_status)
+        echo "{\"status\": \"Ping completed\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
+      else
+        echo '{"error": "Could not find IP address for peer"}'
+      fi
     else
       echo '{"error": "Tailscale is not running"}'
     fi
     ;;
   "tailscale_debug")
     if [ -n "$($SUDO $TAILSCALE status 2>/dev/null)" ]; then
-      TS_OUT=$($SUDO $TAILSCALE debug --json 2>&1)
+      TS_OUT=$($SUDO $TAILSCALE debug 2>&1)
+      # Escape special characters and newlines
+      TS_OUT=$(echo "$TS_OUT" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
       ts_json=$(get_tailscale_status)
       echo "{\"status\": \"Debug info retrieved\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
     else
