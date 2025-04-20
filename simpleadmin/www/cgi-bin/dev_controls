@@ -285,20 +285,36 @@ case "$action" in
         echo '{"error": "Invalid port number"}' && exit 1
       fi
 
-      # Backup the config file
-      $SUDO cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+      # Create a temporary file for the new config
+      temp_config=$(mktemp)
+      if [ ! -f "$temp_config" ]; then
+        echo '{"error": "Failed to create temporary file"}' && exit 1
+      fi
+
+      # Copy existing config to temp file, preserving permissions
+      $SUDO cp /etc/ssh/sshd_config "$temp_config"
+      $SUDO chown root:root "$temp_config"
+      $SUDO chmod 600 "$temp_config"
 
       # Remove any existing Port lines
-      $SUDO sed -i '/^[[:space:]]*Port[[:space:]]/d' /etc/ssh/sshd_config
+      $SUDO sed -i '/^[[:space:]]*Port[[:space:]]/d' "$temp_config"
 
       # Add the new Port line
-      $SUDO sh -c "echo 'Port $param' >> /etc/ssh/sshd_config"
+      $SUDO sh -c "echo 'Port $param' >> $temp_config"
 
       # Verify the change was made
-      if ! grep -qE "^[[:space:]]*Port[[:space:]]+$param" /etc/ssh/sshd_config; then
-        # Restore backup if change failed
+      if ! $SUDO grep -qE "^[[:space:]]*Port[[:space:]]+$param" "$temp_config"; then
+        $SUDO rm -f "$temp_config"
+        echo '{"error": "Failed to update SSH port in temporary file"}' && exit 1
+      fi
+
+      # Backup the original config
+      $SUDO cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+
+      # Move the new config into place
+      if ! $SUDO mv "$temp_config" /etc/ssh/sshd_config; then
         $SUDO mv /etc/ssh/sshd_config.bak /etc/ssh/sshd_config
-        echo '{"error": "Failed to update SSH port"}' && exit 1
+        echo '{"error": "Failed to install new SSH config"}' && exit 1
       fi
 
       # Restart SSH service to apply changes
