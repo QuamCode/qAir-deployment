@@ -669,18 +669,15 @@
                     'text-valign': 'center',
                     'color': '#fff',
                     'font-family': '"Fira Code", monospace',
-                    'background-color': 'var(--node-self)',
+                    'background-color': '#9b59b6',
                     'width': 60,
                     'height': 60,
                     'font-size': '16px',
                     'text-outline-width': 2,
-                    'text-outline-color': 'var(--node-self)',
+                    'text-outline-color': '#9b59b6',
                     'border-width': 2,
                     'border-color': '#fff',
-                    'border-opacity': 0.5,
-                    'shadow-blur': 10,
-                    'shadow-color': 'var(--node-self)',
-                    'shadow-opacity': 0.5
+                    'border-opacity': 0.5
                   }
                 },
                 {
@@ -691,54 +688,41 @@
                     'color': '#fff',
                     'font-family': '"Fira Code", monospace',
                     'background-color': function(ele) {
-                      return ele.data('online') ? 'var(--node-peer-online)' : 'var(--node-peer-offline)';
+                      return ele.data('online') ? '#2ecc71' : '#e74c3c';
                     },
                     'width': 50,
                     'height': 50,
                     'font-size': '14px',
                     'text-outline-width': 2,
                     'text-outline-color': function(ele) {
-                      return ele.data('online') ? 'var(--node-peer-online)' : 'var(--node-peer-offline)';
+                      return ele.data('online') ? '#2ecc71' : '#e74c3c';
                     },
                     'border-width': 2,
                     'border-color': '#fff',
-                    'border-opacity': 0.5,
-                    'shadow-blur': 8,
-                    'shadow-color': function(ele) {
-                      return ele.data('online') ? 'var(--node-peer-online)' : 'var(--node-peer-offline)';
-                    },
-                    'shadow-opacity': 0.5
+                    'border-opacity': 0.5
                   }
                 },
                 {
                   selector: 'edge',
                   style: {
-                    'width': 3,
+                    'width': 2,
                     'line-color': function(ele) {
-                      return ele.data('online') ? 'var(--edge-online)' : 'var(--edge-offline)';
+                      return ele.data('online') ? '#2ecc71' : '#e74c3c';
                     },
                     'curve-style': 'bezier',
-                    'opacity': 0.8,
+                    'opacity': 0.6,
                     'line-style': function(ele) {
                       return ele.data('online') ? 'solid' : 'dashed';
-                    },
-                    'target-arrow-shape': 'triangle',
-                    'target-arrow-color': function(ele) {
-                      return ele.data('online') ? 'var(--edge-online)' : 'var(--edge-offline)';
-                    },
-                    'arrow-scale': 1.5
+                    }
                   }
                 }
               ],
               layout: {
-                name: 'cose',
+                name: 'circle',
                 padding: 50,
                 animate: true,
                 animationDuration: 500,
-                randomize: true,
-                nodeRepulsion: 4000,
-                idealEdgeLength: 100,
-                edgeElasticity: 0.45
+                randomize: true
               }
             });
 
@@ -772,7 +756,10 @@
                   <code>${node.data('ips') || 'N/A'}</code>
                 </div>
                 <div class="mt-2">
-                  <a href="/node.html?id=${node.id()}" target="_blank" class="btn btn-sm btn-outline-primary">
+                  <button class="btn btn-sm btn-outline-primary" onclick="pingPeer('${node.id()}')">
+                    <i class="bi bi-activity"></i> Ping
+                  </button>
+                  <a href="/node.html?id=${node.id()}" target="_blank" class="btn btn-sm btn-outline-info">
                     <i class="bi bi-info-circle"></i> Details
                   </a>
                 </div>
@@ -821,7 +808,23 @@
           },
 
           pingPeer(id) {
-            this.runCommand('tailscale_ping', id);
+            if (!id) return;
+            fetch('/cgi-bin/dev_controls?action=tailscale_ping&port=' + id)
+              .then(response => response.json())
+              .then(data => {
+                if (data.error) {
+                  this.logOutput += "Error: " + data.error + "\n";
+                } else if (data.status) {
+                  this.logOutput += data.status + "\n";
+                  if (data.output) {
+                    this.logOutput += data.output + "\n";
+                  }
+                }
+                this.fetchAllStatus();
+              })
+              .catch(error => {
+                this.logOutput += "Ping error: " + error + "\n";
+              });
           },
 
           showPeerDetails(peer) {

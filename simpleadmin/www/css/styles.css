@@ -14,7 +14,7 @@
 }
 
 * {
-  font-family: "Fira Code", sans-serif;
+  font-family: "Fira Code", monospace;
 }
 
 .custom-checkbox .form-check-input {
