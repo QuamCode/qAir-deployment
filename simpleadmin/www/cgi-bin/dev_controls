@@ -5,12 +5,14 @@
 # --- Parse query parameters ---
 action=""
 param=""
+method=""
 if [ -n "$QUERY_STRING" ]; then
   IFS='&' read -ra params <<< "$QUERY_STRING"
   for p in "${params[@]}"; do
     case $p in
       action=*) action="${p#*=}" ;;
       port=*) param="${p#*=}" ;;
+      method=*) method="${p#*=}" ;;
     esac
   done
 fi
@@ -257,8 +259,8 @@ case "$action" in
     fi
     ;;
   "ssh_set_auth")
-    if [ -n "$param" ]; then
-      set_ssh_auth "$param"
+    if [ -n "$method" ]; then
+      set_ssh_auth "$method"
     else
       echo '{"error": "Authentication method not provided"}' && exit 1
     fi
