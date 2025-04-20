@@ -54,10 +54,26 @@ get_ssh_status() {
 
   # Get authentication method
   auth_method="both"
-  if grep -qE '^[[:space:]]*PasswordAuthentication[[:space:]]+no' /etc/ssh/sshd_config; then
+  password_auth=$(grep -E '^[[:space:]]*PasswordAuthentication[[:space:]]+' /etc/ssh/sshd_config | tail -n1 | sed 's/^[#[:space:]]*PasswordAuthentication[[:space:]]*//')
+  pubkey_auth=$(grep -E '^[[:space:]]*PubkeyAuthentication[[:space:]]+' /etc/ssh/sshd_config | tail -n1 | sed 's/^[#[:space:]]*PubkeyAuthentication[[:space:]]*//')
+
+  # Handle commented out lines
+  if [ -z "$password_auth" ]; then
+    password_auth="yes"  # Default if not specified
+  fi
+  if [ -z "$pubkey_auth" ]; then
+    pubkey_auth="yes"    # Default if not specified
+  fi
+
+  # Determine current auth method
+  if [ "$password_auth" = "no" ] && [ "$pubkey_auth" = "yes" ]; then
     auth_method="pubkey"
-  elif grep -qE '^[[:space:]]*PubkeyAuthentication[[:space:]]+no' /etc/ssh/sshd_config; then
+  elif [ "$password_auth" = "yes" ] && [ "$pubkey_auth" = "no" ]; then
     auth_method="password"
+  elif [ "$password_auth" = "yes" ] && [ "$pubkey_auth" = "yes" ]; then
+    auth_method="both"
+  else
+    auth_method="both"  # Default to both if unclear
   fi
 
   echo "{\"enabled\": $enabled, \"port\": \"$ssh_port\", \"authMethod\": \"$auth_method\"}"
