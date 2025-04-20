@@ -748,6 +748,8 @@
                   this.logOutput += "Error: " + data.error + "\n";
                 } else {
                   this.logOutput += "Authentication method updated to: " + method + "\n";
+                  // Update the local state to match the server
+                  this.sshStatus.authMethod = method;
                   this.fetchAllStatus();
                 }
               })

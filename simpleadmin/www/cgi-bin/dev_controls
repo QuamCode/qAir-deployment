@@ -68,14 +68,17 @@ set_ssh_auth() {
   method="$1"
   case "$method" in
     "password")
+      # Enable password auth, disable pubkey
       $SUDO sed -i -E 's/^[#[:space:]]*PasswordAuthentication[[:space:]]+.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
       $SUDO sed -i -E 's/^[#[:space:]]*PubkeyAuthentication[[:space:]]+.*/PubkeyAuthentication no/' /etc/ssh/sshd_config
       ;;
     "pubkey")
+      # Disable password auth, enable pubkey
       $SUDO sed -i -E 's/^[#[:space:]]*PasswordAuthentication[[:space:]]+.*/PasswordAuthentication no/' /etc/ssh/sshd_config
       $SUDO sed -i -E 's/^[#[:space:]]*PubkeyAuthentication[[:space:]]+.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
       ;;
     "both")
+      # Enable both methods
       $SUDO sed -i -E 's/^[#[:space:]]*PasswordAuthentication[[:space:]]+.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
       $SUDO sed -i -E 's/^[#[:space:]]*PubkeyAuthentication[[:space:]]+.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
       ;;
@@ -83,6 +86,24 @@ set_ssh_auth() {
       echo '{"error": "Invalid authentication method"}' && exit 1
       ;;
   esac
+
+  # Verify the changes were made
+  if [ "$method" = "password" ]; then
+    if ! grep -qE '^[[:space:]]*PasswordAuthentication[[:space:]]+yes' /etc/ssh/sshd_config || \
+       ! grep -qE '^[[:space:]]*PubkeyAuthentication[[:space:]]+no' /etc/ssh/sshd_config; then
+      echo '{"error": "Failed to set password authentication"}' && exit 1
+    fi
+  elif [ "$method" = "pubkey" ]; then
+    if ! grep -qE '^[[:space:]]*PasswordAuthentication[[:space:]]+no' /etc/ssh/sshd_config || \
+       ! grep -qE '^[[:space:]]*PubkeyAuthentication[[:space:]]+yes' /etc/ssh/sshd_config; then
+      echo '{"error": "Failed to set public key authentication"}' && exit 1
+    fi
+  elif [ "$method" = "both" ]; then
+    if ! grep -qE '^[[:space:]]*PasswordAuthentication[[:space:]]+yes' /etc/ssh/sshd_config || \
+       ! grep -qE '^[[:space:]]*PubkeyAuthentication[[:space:]]+yes' /etc/ssh/sshd_config; then
+      echo '{"error": "Failed to set both authentication methods"}' && exit 1
+    fi
+  fi
 
   # Restart SSH service to apply changes
   if ! $SUDO $SYSTEMCTL restart sshd 2>/dev/null; then
