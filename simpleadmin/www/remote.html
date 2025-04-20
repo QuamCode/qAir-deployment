@@ -621,10 +621,16 @@
           init() {
             this.fetchAllStatus();
             this.fetchKeys();
+            
+            // Draw initial graph after a short delay to ensure data is loaded
+            setTimeout(() => {
+              this.drawCytoscapeGraph();
+            }, 500);
+            
             setInterval(() => { 
               this.fetchAllStatus(); 
               this.fetchKeys(); 
-            }, 30000);
+            }, 30000); // Changed to 30 seconds
 
             // Do initial ping for online peers
             setTimeout(() => {
@@ -695,6 +701,10 @@
           drawCytoscapeGraph() {
             const container = document.getElementById('graphContainer');
             if (this.cy) { this.cy.destroy(); }
+            
+            // Store a reference to the current context
+            const self = this;
+            
             this.cy = cytoscape({
               container: container,
               elements: this.getGraphElements(),
@@ -720,10 +730,11 @@
                   selector: 'node[type="peer"]',
                   style: {
                     'label': function(ele) {
-                      const peer = this.tailscaleStatus.peers.find(p => p.id === ele.id());
-                      return peer && peer.pingStats && peer.pingStats.avg ? 
-                        `${ele.data('label')}\n${peer.pingStats.avg.toFixed(0)} ms` : 
-                        ele.data('label');
+                      const peer = self.tailscaleStatus.peers.find(p => p.id === ele.id());
+                      if (peer && peer.pingStats && peer.pingStats.avg) {
+                        return `${ele.data('label')}\n${peer.pingStats.avg.toFixed(0)} ms`;
+                      }
+                      return ele.data('label');
                     },
                     'text-valign': 'center',
                     'color': '#fff',
