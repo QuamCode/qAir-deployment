@@ -323,7 +323,7 @@
             </div>
           </div>
         </nav>
-
+    
         <!-- Status Overview -->
         <div class="row mb-4">
           <div class="col-md-6">
@@ -364,7 +364,7 @@
               </div>
             </div>
           </div>
-
+    
           <div class="col-md-6">
             <div class="card">
               <div class="card-header d-flex justify-content-between align-items-center">
@@ -405,7 +405,7 @@
             </div>
           </div>
         </div>
-
+    
         <!-- Network Graph -->
         <div class="row mb-4">
           <div class="col-12">
@@ -425,11 +425,11 @@
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
+                    </div>
+                  </div>
+                </div>
 
-        <!-- Peer List -->
+                <!-- Peer List -->
         <div class="row mb-4">
           <div class="col-12">
             <div class="card">
@@ -437,46 +437,50 @@
                 <h5 class="mb-0">Connected Peers</h5>
               </div>
               <div class="card-body">
-                <div class="table-responsive">
+                  <div class="table-responsive">
                   <table class="table table-hover">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>OS</th>
-                        <th>Status</th>
-                        <th>Last Seen</th>
-                        <th>IPs</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <template x-for="peer in tailscaleStatus.peers" :key="peer.id">
+                      <thead>
                         <tr>
-                          <td x-text="peer.name"></td>
-                          <td x-text="peer.os"></td>
-                          <td>
-                            <span class="status-indicator" :class="peer.online ? 'status-online' : 'status-offline'"></span>
-                            <span x-text="peer.online ? 'Online' : 'Offline'"></span>
-                          </td>
-                          <td x-text="peer.last_seen"></td>
-                          <td x-text="peer.tailscale_ips.join(', ')"></td>
-                          <td>
-                            <button class="btn btn-sm btn-outline-primary" @click="pingPeer(peer.id)">
-                              <i class="bi bi-activity"></i> Ping
-                            </button>
-                            <button class="btn btn-sm btn-outline-info" @click="showPeerDetails(peer)">
-                              <i class="bi bi-info-circle"></i> Details
-                            </button>
-                          </td>
+                          <th>Name</th>
+                          <th>OS</th>
+                          <th>Status</th>
+                          <th>Last Seen</th>
+                          <th>IPs</th>
+                          <th>Actions</th>
                         </tr>
-                      </template>
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        <template x-for="peer in tailscaleStatus.peers" :key="peer.id">
+                          <tr>
+                            <td>
+                              <a :href="'https://login.tailscale.com/admin/machines/' + peer.tailscale_ips[0]" target="_blank" class="text-decoration-none">
+                                <span x-text="peer.name"></span>
+                              </a>
+                            </td>
+                            <td x-text="peer.os"></td>
+                            <td>
+                              <span class="status-indicator" :class="peer.online ? 'status-online' : 'status-offline'"></span>
+                              <span x-text="peer.online ? 'Online' : 'Offline'"></span>
+                              <template x-if="peer.online && peer.pingStats">
+                                <span class="text-muted ms-2" x-text="peer.pingStats.avg ? peer.pingStats.avg.toFixed(0) + ' ms' : ''"></span>
+                              </template>
+                            </td>
+                            <td x-text="peer.last_seen"></td>
+                            <td x-text="peer.tailscale_ips.join(', ')"></td>
+                            <td>
+                              <button class="btn btn-sm btn-outline-primary" @click="pingPeer(peer.id)">
+                                <i class="bi bi-activity"></i> Ping
+                              </button>
+                            </td>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
+                              </div>
+                            </div>
+                          </div>
 
         <!-- SSH Key Management -->
         <div class="row mb-4">
@@ -484,8 +488,8 @@
             <div class="card">
               <div class="card-header">
                 <h5 class="mb-0">SSH Key Management</h5>
-              </div>
-              <div class="card-body">
+                    </div>
+                        <div class="card-body">
                 <div class="input-group mb-3">
                   <input type="file" id="keyFile" accept=".pub,.txt" class="form-control" />
                   <button class="btn btn-primary" @click="uploadKey">
@@ -506,7 +510,7 @@
             </div>
           </div>
         </div>
-
+    
         <!-- Output Log -->
         <div class="row">
           <div class="col-12">
@@ -618,7 +622,7 @@
         </div>
       </div>
     </div>
-
+    
     <script src="js/dark-mode.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.0/cytoscape.min.js"></script>
     <script>
@@ -642,7 +646,7 @@
           cy: null,
           lastPeersJson: "",
           selectedPeer: null,
-
+    
           runCommand(action, param = null) {
             let url = '/cgi-bin/dev_controls?action=' + action;
             if (param !== null) { url += '&port=' + param; }
@@ -661,7 +665,7 @@
                 this.logOutput += "Fetch error: " + error + "\n"; 
               });
           },
-
+    
           fetchAllStatus() {
             fetch('/cgi-bin/dev_controls?action=all_status')
               .then(response => response.json())
@@ -678,7 +682,7 @@
               })
               .catch(error => { console.error("Status fetch error:", error); });
           },
-
+    
           fetchKeys() {
             fetch('/cgi-bin/dev_controls?action=list_keys')
               .then(response => response.json())
@@ -689,7 +693,7 @@
               })
               .catch(error => { console.error("Keys fetch error:", error); });
           },
-
+    
           removeKey(index) {
             if (confirm("Remove key at index " + index + "?")) {
               fetch('/cgi-bin/dev_controls?action=remove_key&port=' + index)
@@ -705,14 +709,23 @@
                 });
             }
           },
-
+    
           init() {
             this.fetchAllStatus();
             this.fetchKeys();
             setInterval(() => { 
               this.fetchAllStatus(); 
               this.fetchKeys(); 
-            }, 5000);
+            }, 30000);
+
+            // Add automatic ping for online peers
+            setInterval(() => {
+              this.tailscaleStatus.peers.forEach(peer => {
+                if (peer.online) {
+                  this.pingPeer(peer.id);
+                }
+              });
+            }, 60000); // Ping every minute
 
             // Add click handler for modal backdrop
             const modal = document.getElementById('peerDetailsModal');
@@ -729,7 +742,7 @@
               }
             });
           },
-
+    
           uploadKey() {
             const fileInput = document.getElementById('keyFile');
             if (fileInput.files.length > 0) {
@@ -751,7 +764,7 @@
               alert("Please select a public key file.");
             }
           },
-
+    
           getGraphElements() {
             let elements = [];
             // Add central node "You"
@@ -785,7 +798,7 @@
             });
             return elements;
           },
-
+    
           drawCytoscapeGraph() {
             const container = document.getElementById('graphContainer');
             if (this.cy) { this.cy.destroy(); }
@@ -852,7 +865,7 @@
                 randomize: true
               }
             });
-
+    
             // On node tap, show persistent tooltip
             this.cy.on('tap', 'node', (evt) => {
               const node = evt.target;
@@ -869,6 +882,9 @@
                 <div class="d-flex align-items-center mb-2">
                   <span class="status-indicator ${statusClass}"></span>
                   <strong class="ms-2">${node.data('label')}</strong>
+                  <template x-if="selectedPeer && selectedPeer.id === '${node.id()}' && selectedPeer.pingStats && selectedPeer.pingStats.avg">
+                    <span class="text-muted ms-2" x-text="selectedPeer.pingStats.avg.toFixed(0) + ' ms'"></span>
+                  </template>
                 </div>
                 <div class="mb-2">
                   <small class="text-muted">OS:</small><br>
@@ -882,41 +898,20 @@
                   <small class="text-muted">IPs:</small><br>
                   <code>${node.data('ips') || 'N/A'}</code>
                 </div>
-                <template x-if="selectedPeer && selectedPeer.id === '${node.id()}' && selectedPeer.pingStats">
-                  <div class="mt-2">
-                    <small class="text-muted">Last Ping:</small><br>
-                    <div class="mb-2">
-                      <small class="text-muted">Connection Type:</small><br>
-                      <span x-text="selectedPeer.pingStats.connectionType"></span>
-                    </div>
-                    <div class="mb-2">
-                      <small class="text-muted">Packets:</small><br>
-                      <span x-text="'Sent: ' + selectedPeer.pingStats.sent + ', Received: ' + selectedPeer.pingStats.received + ', Lost: ' + selectedPeer.pingStats.lost + ' (' + ((selectedPeer.pingStats.lost/selectedPeer.pingStats.sent*100).toFixed(1)) + '% loss)'"></span>
-                    </div>
-                    <div class="mb-2">
-                      <small class="text-muted">Round-trip Times:</small><br>
-                      <span x-text="'Min: ' + selectedPeer.pingStats.min + 'ms, Avg: ' + selectedPeer.pingStats.avg.toFixed(2) + 'ms, Max: ' + selectedPeer.pingStats.max + 'ms'"></span>
-                    </div>
-                    <div class="mt-2">
-                      <small class="text-muted">Raw Output:</small><br>
-                      <pre class="bg-light p-2 rounded" style="font-family: 'Fira Code', monospace; font-size: 0.9em; white-space: pre-wrap;" x-text="selectedPeer.pingStats.rawOutput"></pre>
-                    </div>
-                  </div>
-                </template>
                 <div class="mt-2">
-                  <button class="btn btn-sm btn-outline-primary" @click="pingPeer('${node.id()}')">
+                  <a href="https://login.tailscale.com/admin/machines/${node.data('ips').split(',')[0]}" target="_blank" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-box-arrow-up-right"></i> TS Console
+                  </a>
+                  <button class="btn btn-sm btn-outline-info" @click="pingPeer('${node.id()}')">
                     <i class="bi bi-activity"></i> Ping
                   </button>
-                  <a href="/node.html?id=${node.id()}" target="_blank" class="btn btn-sm btn-outline-info">
-                    <i class="bi bi-info-circle"></i> Details
-                  </a>
                 </div>
               `;
               tooltip.innerHTML = content;
               // Initialize Alpine.js on the new content
               Alpine.initTree(tooltip);
             });
-
+    
             // Hide tooltip when clicking outside
             document.addEventListener('click', (e) => {
               const tooltip = document.getElementById('tooltip');
@@ -926,7 +921,7 @@
               }
             });
           },
-
+    
           toggleGraphLayout(layoutName) {
             if (!this.cy) return;
             const layout = this.cy.layout({
@@ -938,7 +933,7 @@
             });
             layout.run();
           },
-
+    
           updateTailscaleStatus(data) {
             this.tailscaleStatus = {
               ...this.tailscaleStatus,
@@ -956,7 +951,7 @@
               }
             }
           },
-
+    
           pingPeer(id) {
             if (!id) return;
             const peer = this.tailscaleStatus.peers.find(p => p.id === id);
@@ -1029,18 +1024,15 @@
                         this.logOutput += `Round-trip min/avg/max = ${stats.min}/${stats.avg.toFixed(2)}/${stats.max} ms\n`;
                       }
 
-                      // Update peer details
-                      if (this.selectedPeer && this.selectedPeer.id === id) {
-                        this.selectedPeer.pingStats = stats;
-                        this.selectedPeer.lastPing = new Date().toLocaleTimeString();
-                      }
-
                       // Update peer in the table
                       const peerIndex = this.tailscaleStatus.peers.findIndex(p => p.id === id);
                       if (peerIndex !== -1) {
                         this.tailscaleStatus.peers[peerIndex].pingStats = stats;
                         this.tailscaleStatus.peers[peerIndex].lastPing = new Date().toLocaleTimeString();
                       }
+
+                      // Redraw graph to update ping display
+                      this.drawCytoscapeGraph();
                     }
                   }
                 } catch (error) {
@@ -1053,7 +1045,7 @@
                 this.logOutput += "Ping error: " + error + "\n";
               });
           },
-
+    
           showPeerDetails(peer) {
             this.selectedPeer = peer;
             const modal = document.getElementById('peerDetailsModal');
