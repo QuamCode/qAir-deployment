@@ -626,14 +626,14 @@
               this.fetchKeys(); 
             }, 30000);
 
-            // Add automatic ping for online peers
-            setInterval(() => {
+            // Do initial ping for online peers
+            setTimeout(() => {
               this.tailscaleStatus.peers.forEach(peer => {
                 if (peer.online) {
                   this.pingPeer(peer.id);
                 }
               });
-            }, 60000); // Ping every minute
+            }, 2000); // Wait 2 seconds after initial load
           },
     
           uploadKey() {
@@ -719,7 +719,12 @@
                 {
                   selector: 'node[type="peer"]',
                   style: {
-                    'label': 'data(label)',
+                    'label': function(ele) {
+                      const peer = this.tailscaleStatus.peers.find(p => p.id === ele.id());
+                      return peer && peer.pingStats && peer.pingStats.avg ? 
+                        `${ele.data('label')}\n${peer.pingStats.avg.toFixed(0)} ms` : 
+                        ele.data('label');
+                    },
                     'text-valign': 'center',
                     'color': '#fff',
                     'font-family': '"Fira Code", monospace',
@@ -767,42 +772,7 @@
               tooltip.style.display = "block";
               tooltip.style.left = (pos.x + 20) + "px";
               tooltip.style.top = (pos.y - 20) + "px";
-              
-              const statusClass = node.data('online') ? 'status-online' : 'status-offline';
-              const statusText = node.data('online') ? 'Online' : 'Offline';
-              
-              let content = `
-                <div class="d-flex align-items-center mb-2">
-                  <span class="status-indicator ${statusClass}"></span>
-                  <strong class="ms-2">${node.data('label')}</strong>
-                  <template x-if="selectedPeer && selectedPeer.id === '${node.id()}' && selectedPeer.pingStats && selectedPeer.pingStats.avg">
-                    <span class="text-muted ms-2" x-text="selectedPeer.pingStats.avg.toFixed(0) + ' ms'"></span>
-                  </template>
-                </div>
-                <div class="mb-2">
-                  <small class="text-muted">OS:</small><br>
-                  <code>${node.data('os') || 'N/A'}</code>
-                </div>
-                <div class="mb-2">
-                  <small class="text-muted">Status:</small><br>
-                  <span class="badge bg-opacity-25 ${statusClass} text-white">${statusText}</span>
-                </div>
-                <div class="mb-2">
-                  <small class="text-muted">IPs:</small><br>
-                  <code>${node.data('ips') || 'N/A'}</code>
-                </div>
-                <div class="mt-2">
-                  <a href="https://login.tailscale.com/admin/machines/${node.data('ips').split(',')[0]}" target="_blank" class="btn btn-sm btn-outline-primary">
-                    <i class="bi bi-box-arrow-up-right"></i> TS Console
-                  </a>
-                  <button class="btn btn-sm btn-outline-info" @click="pingPeer('${node.id()}')">
-                    <i class="bi bi-activity"></i> Ping
-                  </button>
-                </div>
-              `;
-              tooltip.innerHTML = content;
-              // Initialize Alpine.js on the new content
-              Alpine.initTree(tooltip);
+              this.updateTooltipContent(node);
             });
     
             // Hide tooltip when clicking outside
@@ -924,8 +894,17 @@
                         this.tailscaleStatus.peers[peerIndex].lastPing = new Date().toLocaleTimeString();
                       }
 
-                      // Redraw graph to update ping display
-                      this.drawCytoscapeGraph();
+                      // Update the tooltip if it's visible for this peer
+                      const tooltip = document.getElementById('tooltip');
+                      if (tooltip.style.display === 'block') {
+                        const node = this.cy.getElementById(id);
+                        if (node) {
+                          const pos = node.renderedPosition();
+                          tooltip.style.left = (pos.x + 20) + "px";
+                          tooltip.style.top = (pos.y - 20) + "px";
+                          this.updateTooltipContent(node);
+                        }
+                      }
                     }
                   }
                 } catch (error) {
@@ -937,6 +916,44 @@
               .catch(error => {
                 this.logOutput += "Ping error: " + error + "\n";
               });
+          },
+    
+          updateTooltipContent(node) {
+            const tooltip = document.getElementById('tooltip');
+            const statusClass = node.data('online') ? 'status-online' : 'status-offline';
+            const statusText = node.data('online') ? 'Online' : 'Offline';
+            const peer = this.tailscaleStatus.peers.find(p => p.id === node.id());
+            
+            let content = `
+              <div class="d-flex align-items-center mb-2">
+                <span class="status-indicator ${statusClass}"></span>
+                <strong class="ms-2">${node.data('label')}</strong>
+                ${peer && peer.pingStats && peer.pingStats.avg ? 
+                  `<span class="text-muted ms-2">${peer.pingStats.avg.toFixed(0)} ms</span>` : ''}
+              </div>
+              <div class="mb-2">
+                <small class="text-muted">OS:</small><br>
+                <code>${node.data('os') || 'N/A'}</code>
+              </div>
+              <div class="mb-2">
+                <small class="text-muted">Status:</small><br>
+                <span class="badge bg-opacity-25 ${statusClass} text-white">${statusText}</span>
+              </div>
+              <div class="mb-2">
+                <small class="text-muted">IPs:</small><br>
+                <code>${node.data('ips') || 'N/A'}</code>
+              </div>
+              <div class="mt-2">
+                <a href="https://login.tailscale.com/admin/machines/${node.data('ips').split(',')[0]}" target="_blank" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-box-arrow-up-right"></i> TS Console
+                </a>
+                <button class="btn btn-sm btn-outline-info" @click="pingPeer('${node.id()}')">
+                  <i class="bi bi-activity"></i> Ping
+                </button>
+              </div>
+            `;
+            tooltip.innerHTML = content;
+            Alpine.initTree(tooltip);
           },
     
           clearLog() {
