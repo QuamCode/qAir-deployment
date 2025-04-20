@@ -299,13 +299,13 @@ case "$action" in
       TS_OUT=$($SUDO $TAILSCALE ping -c "$count" $verbose "$target" 2>&1)
       
       # Properly escape the output for JSON
-      TS_OUT=$(echo "$TS_OUT" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\n/\\n/g' -e 's/\r//g')
+      TS_OUT=$(echo "$TS_OUT" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\n/\\n/g' -e 's/\r//g' -e 's/\t/\\t/g')
       
       # Get status
       ts_json=$(get_tailscale_status)
       
       # Output JSON with properly escaped ping output
-      echo "{\"status\": \"Ping completed\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
+      echo "{\"status\": \"Ping completed\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}" | tr -d '\n'
     else
       echo '{"error": "Tailscale is not running"}'
     fi

@@ -214,6 +214,72 @@
       [data-bs-theme="dark"] .stats-card {
         background-color: #2c3034;
       }
+
+      /* Modal styling */
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1050;
+      }
+
+      .modal.show {
+        display: block;
+      }
+
+      .modal-dialog {
+        position: relative;
+        width: auto;
+        margin: 1.75rem auto;
+        max-width: 800px;
+      }
+
+      .modal-content {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        background-color: var(--light-color);
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-radius: 0.3rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+      }
+
+      .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      .modal-body {
+        position: relative;
+        flex: 1 1 auto;
+        padding: 1rem;
+      }
+
+      .modal-footer {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding: 1rem;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      [data-bs-theme="dark"] .modal-content {
+        background-color: #2c3034;
+        border-color: #404040;
+      }
+
+      [data-bs-theme="dark"] .modal-header,
+      [data-bs-theme="dark"] .modal-footer {
+        border-color: #404040;
+      }
     </style>
   </head>
   <body>
@@ -848,72 +914,80 @@
 
             // Run ping with verbose output and 4 packets
             fetch('/cgi-bin/dev_controls?action=tailscale_ping&port=' + peerIP + '&count=4&verbose=true')
-              .then(response => response.json())
-              .then(data => {
-                if (data.error) {
-                  this.logOutput += "Error: " + data.error + "\n";
-                } else if (data.status) {
-                  this.logOutput += data.status + "\n";
-                  if (data.output) {
-                    // Store raw output
-                    const rawOutput = data.output;
-                    
-                    // Parse and format the ping output
-                    const lines = data.output.split('\n');
-                    let stats = {
-                      sent: 0,
-                      received: 0,
-                      lost: 0,
-                      min: null,
-                      max: null,
-                      avg: null,
-                      connectionType: 'Unknown',
-                      rawOutput: rawOutput
-                    };
+              .then(response => response.text())
+              .then(text => {
+                try {
+                  // Try to parse the JSON response
+                  const data = JSON.parse(text);
+                  
+                  if (data.error) {
+                    this.logOutput += "Error: " + data.error + "\n";
+                  } else if (data.status) {
+                    this.logOutput += data.status + "\n";
+                    if (data.output) {
+                      // Store raw output
+                      const rawOutput = data.output;
+                      
+                      // Parse and format the ping output
+                      const lines = data.output.split('\n');
+                      let stats = {
+                        sent: 0,
+                        received: 0,
+                        lost: 0,
+                        min: null,
+                        max: null,
+                        avg: null,
+                        connectionType: 'Unknown',
+                        rawOutput: rawOutput
+                      };
 
-                    lines.forEach(line => {
-                      if (line.includes('pong')) {
-                        const match = line.match(/pong from ([^ ]+) \((\d+\.\d+\.\d+\.\d+)\) in (\d+\.\d+)ms/);
-                        if (match) {
-                          const [, host, ip, latency] = match;
-                          const latencyNum = parseFloat(latency);
-                          stats.received++;
-                          if (stats.min === null || latencyNum < stats.min) stats.min = latencyNum;
-                          if (stats.max === null || latencyNum > stats.max) stats.max = latencyNum;
-                          this.logOutput += `Ping to ${host} (${ip}): ${latency}ms\n`;
+                      lines.forEach(line => {
+                        if (line.includes('pong')) {
+                          const match = line.match(/pong from ([^ ]+) \((\d+\.\d+\.\d+\.\d+)\) in (\d+\.\d+)ms/);
+                          if (match) {
+                            const [, host, ip, latency] = match;
+                            const latencyNum = parseFloat(latency);
+                            stats.received++;
+                            if (stats.min === null || latencyNum < stats.min) stats.min = latencyNum;
+                            if (stats.max === null || latencyNum > stats.max) stats.max = latencyNum;
+                            this.logOutput += `Ping to ${host} (${ip}): ${latency}ms\n`;
+                          }
+                        } else if (line.includes('direct')) {
+                          stats.connectionType = 'Direct';
+                          this.logOutput += `Connection type: Direct\n`;
+                        } else if (line.includes('DERP')) {
+                          stats.connectionType = 'DERP relay';
+                          this.logOutput += `Connection type: DERP relay\n`;
                         }
-                      } else if (line.includes('direct')) {
-                        stats.connectionType = 'Direct';
-                        this.logOutput += `Connection type: Direct\n`;
-                      } else if (line.includes('DERP')) {
-                        stats.connectionType = 'DERP relay';
-                        this.logOutput += `Connection type: DERP relay\n`;
+                      });
+
+                      // Calculate statistics
+                      stats.sent = 4; // We sent 4 packets
+                      stats.lost = stats.sent - stats.received;
+                      if (stats.received > 0) {
+                        stats.avg = (stats.min + stats.max) / 2;
+                        this.logOutput += `\nPing statistics:\n`;
+                        this.logOutput += `Packets: Sent = ${stats.sent}, Received = ${stats.received}, Lost = ${stats.lost} (${(stats.lost/stats.sent*100).toFixed(1)}% loss)\n`;
+                        this.logOutput += `Round-trip min/avg/max = ${stats.min}/${stats.avg.toFixed(2)}/${stats.max} ms\n`;
                       }
-                    });
 
-                    // Calculate statistics
-                    stats.sent = 4; // We sent 4 packets
-                    stats.lost = stats.sent - stats.received;
-                    if (stats.received > 0) {
-                      stats.avg = (stats.min + stats.max) / 2;
-                      this.logOutput += `\nPing statistics:\n`;
-                      this.logOutput += `Packets: Sent = ${stats.sent}, Received = ${stats.received}, Lost = ${stats.lost} (${(stats.lost/stats.sent*100).toFixed(1)}% loss)\n`;
-                      this.logOutput += `Round-trip min/avg/max = ${stats.min}/${stats.avg.toFixed(2)}/${stats.max} ms\n`;
-                    }
+                      // Update peer details if modal is open
+                      if (this.selectedPeer && this.selectedPeer.id === id) {
+                        this.selectedPeer.pingStats = stats;
+                        this.selectedPeer.lastPing = new Date().toLocaleTimeString();
+                      }
 
-                    // Update peer details if modal is open
-                    if (this.selectedPeer && this.selectedPeer.id === id) {
-                      this.selectedPeer.pingStats = stats;
-                      this.selectedPeer.lastPing = new Date().toLocaleTimeString();
-                    }
-
-                    // Update peer in the table
-                    const peerIndex = this.tailscaleStatus.peers.findIndex(p => p.id === id);
-                    if (peerIndex !== -1) {
-                      this.tailscaleStatus.peers[peerIndex].pingStats = stats;
-                      this.tailscaleStatus.peers[peerIndex].lastPing = new Date().toLocaleTimeString();
+                      // Update peer in the table
+                      const peerIndex = this.tailscaleStatus.peers.findIndex(p => p.id === id);
+                      if (peerIndex !== -1) {
+                        this.tailscaleStatus.peers[peerIndex].pingStats = stats;
+                        this.tailscaleStatus.peers[peerIndex].lastPing = new Date().toLocaleTimeString();
+                      }
                     }
                   }
+                } catch (error) {
+                  this.logOutput += "Error parsing ping response: " + error + "\n";
+                  this.logOutput += "Raw response: " + text + "\n";
                 }
                 this.fetchAllStatus();
               })
@@ -924,8 +998,12 @@
 
           showPeerDetails(peer) {
             this.selectedPeer = peer;
-            const modal = new bootstrap.Modal(document.getElementById('peerDetailsModal'));
-            modal.show();
+            const modal = document.getElementById('peerDetailsModal');
+            modal.classList.add('show');
+            modal.style.display = 'block';
+            document.body.classList.add('modal-open');
+            document.body.style.overflow = 'hidden';
+            document.body.style.paddingRight = '17px';
           },
 
           clearLog() {
