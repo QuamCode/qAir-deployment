@@ -513,6 +513,10 @@
                           <small class="text-muted">Round-trip Times:</small><br>
                           <span x-text="'Min: ' + selectedPeer.pingStats.min + 'ms, Avg: ' + selectedPeer.pingStats.avg.toFixed(2) + 'ms, Max: ' + selectedPeer.pingStats.max + 'ms'"></span>
                         </div>
+                        <div class="mt-3">
+                          <small class="text-muted">Raw Ping Output:</small><br>
+                          <pre class="bg-light p-2 rounded" style="font-family: 'Fira Code', monospace; font-size: 0.9em; white-space: pre-wrap;" x-text="selectedPeer.pingStats.rawOutput"></pre>
+                        </div>
                       </div>
                     </template>
                   </div>
@@ -773,7 +777,7 @@
                   <code>${node.data('ips') || 'N/A'}</code>
                 </div>
                 <div class="mt-2">
-                  <button class="btn btn-sm btn-outline-primary" onclick="pingPeer('${node.id()}')">
+                  <button class="btn btn-sm btn-outline-primary" @click="pingPeer('${node.id()}')">
                     <i class="bi bi-activity"></i> Ping
                   </button>
                   <a href="/node.html?id=${node.id()}" target="_blank" class="btn btn-sm btn-outline-info">
@@ -782,6 +786,8 @@
                 </div>
               `;
               tooltip.innerHTML = content;
+              // Initialize Alpine.js on the new content
+              Alpine.initTree(tooltip);
             });
 
             // Hide tooltip when clicking outside
@@ -849,6 +855,9 @@
                 } else if (data.status) {
                   this.logOutput += data.status + "\n";
                   if (data.output) {
+                    // Store raw output
+                    const rawOutput = data.output;
+                    
                     // Parse and format the ping output
                     const lines = data.output.split('\n');
                     let stats = {
@@ -858,7 +867,8 @@
                       min: null,
                       max: null,
                       avg: null,
-                      connectionType: 'Unknown'
+                      connectionType: 'Unknown',
+                      rawOutput: rawOutput
                     };
 
                     lines.forEach(line => {

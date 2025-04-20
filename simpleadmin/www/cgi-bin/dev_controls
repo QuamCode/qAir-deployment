@@ -295,8 +295,16 @@ case "$action" in
         echo '{"error": "No target specified"}' && exit 1
       fi
 
+      # Run ping and capture output
       TS_OUT=$($SUDO $TAILSCALE ping -c "$count" $verbose "$target" 2>&1)
+      
+      # Properly escape the output for JSON
+      TS_OUT=$(echo "$TS_OUT" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\n/\\n/g' -e 's/\r//g')
+      
+      # Get status
       ts_json=$(get_tailscale_status)
+      
+      # Output JSON with properly escaped ping output
       echo "{\"status\": \"Ping completed\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
     else
       echo '{"error": "Tailscale is not running"}'
