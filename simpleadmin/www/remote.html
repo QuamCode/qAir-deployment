@@ -493,7 +493,28 @@
                     <h6>Tailscale IPs</h6>
                     <code class="d-block mb-2" x-text="selectedPeer.tailscale_ips.join('\n')"></code>
                     <h6>Allowed IPs</h6>
-                    <code class="d-block" x-text="selectedPeer.allowed_ips.join('\n')"></code>
+                    <code class="d-block mb-2" x-text="selectedPeer.allowed_ips.join('\n')"></code>
+                    <template x-if="selectedPeer.pingStats">
+                      <div class="mt-3">
+                        <h6>Ping Statistics</h6>
+                        <div class="mb-2">
+                          <small class="text-muted">Last Ping:</small><br>
+                          <span x-text="selectedPeer.lastPing"></span>
+                        </div>
+                        <div class="mb-2">
+                          <small class="text-muted">Connection Type:</small><br>
+                          <span x-text="selectedPeer.pingStats.connectionType"></span>
+                        </div>
+                        <div class="mb-2">
+                          <small class="text-muted">Packets:</small><br>
+                          <span x-text="'Sent: ' + selectedPeer.pingStats.sent + ', Received: ' + selectedPeer.pingStats.received + ', Lost: ' + selectedPeer.pingStats.lost + ' (' + ((selectedPeer.pingStats.lost/selectedPeer.pingStats.sent*100).toFixed(1)) + '% loss)'"></span>
+                        </div>
+                        <div class="mb-2">
+                          <small class="text-muted">Round-trip Times:</small><br>
+                          <span x-text="'Min: ' + selectedPeer.pingStats.min + 'ms, Avg: ' + selectedPeer.pingStats.avg.toFixed(2) + 'ms, Max: ' + selectedPeer.pingStats.max + 'ms'"></span>
+                        </div>
+                      </div>
+                    </template>
                   </div>
                 </div>
               </div>
@@ -745,7 +766,7 @@
                 </div>
                 <div class="mb-2">
                   <small class="text-muted">Status:</small><br>
-                  <span class="badge bg-opacity-25 ${statusClass}">${statusText}</span>
+                  <span class="badge bg-opacity-25 ${statusClass} text-white">${statusText}</span>
                 </div>
                 <div class="mb-2">
                   <small class="text-muted">IPs:</small><br>
@@ -836,7 +857,8 @@
                       lost: 0,
                       min: null,
                       max: null,
-                      avg: null
+                      avg: null,
+                      connectionType: 'Unknown'
                     };
 
                     lines.forEach(line => {
@@ -851,8 +873,10 @@
                           this.logOutput += `Ping to ${host} (${ip}): ${latency}ms\n`;
                         }
                       } else if (line.includes('direct')) {
+                        stats.connectionType = 'Direct';
                         this.logOutput += `Connection type: Direct\n`;
                       } else if (line.includes('DERP')) {
+                        stats.connectionType = 'DERP relay';
                         this.logOutput += `Connection type: DERP relay\n`;
                       }
                     });
@@ -865,6 +889,19 @@
                       this.logOutput += `\nPing statistics:\n`;
                       this.logOutput += `Packets: Sent = ${stats.sent}, Received = ${stats.received}, Lost = ${stats.lost} (${(stats.lost/stats.sent*100).toFixed(1)}% loss)\n`;
                       this.logOutput += `Round-trip min/avg/max = ${stats.min}/${stats.avg.toFixed(2)}/${stats.max} ms\n`;
+                    }
+
+                    // Update peer details if modal is open
+                    if (this.selectedPeer && this.selectedPeer.id === id) {
+                      this.selectedPeer.pingStats = stats;
+                      this.selectedPeer.lastPing = new Date().toLocaleTimeString();
+                    }
+
+                    // Update peer in the table
+                    const peerIndex = this.tailscaleStatus.peers.findIndex(p => p.id === id);
+                    if (peerIndex !== -1) {
+                      this.tailscaleStatus.peers[peerIndex].pingStats = stats;
+                      this.tailscaleStatus.peers[peerIndex].lastPing = new Date().toLocaleTimeString();
                     }
                   }
                 }

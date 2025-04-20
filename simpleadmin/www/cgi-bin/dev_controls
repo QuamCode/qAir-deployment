@@ -279,7 +279,23 @@ case "$action" in
     ;;
   "tailscale_ping")
     if [ -n "$($SUDO $TAILSCALE status 2>/dev/null)" ]; then
-      TS_OUT=$($SUDO $TAILSCALE ping -c 4 "$param" 2>&1)
+      # Extract parameters
+      count=4
+      verbose=""
+      if [ -n "$param" ]; then
+        if echo "$param" | grep -q "count="; then
+          count=$(echo "$param" | sed 's/.*count=\([0-9]*\).*/\1/')
+        fi
+        if echo "$param" | grep -q "verbose=true"; then
+          verbose="--verbose"
+        fi
+        # Extract the actual IP/hostname to ping
+        target=$(echo "$param" | sed 's/\([^&]*\).*/\1/')
+      else
+        echo '{"error": "No target specified"}' && exit 1
+      fi
+
+      TS_OUT=$($SUDO $TAILSCALE ping -c "$count" $verbose "$target" 2>&1)
       ts_json=$(get_tailscale_status)
       echo "{\"status\": \"Ping completed\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
     else
