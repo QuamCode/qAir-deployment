@@ -225,6 +225,7 @@
         height: 100%;
         background-color: rgba(0, 0, 0, 0.5);
         z-index: 1050;
+        overflow-y: auto;
       }
 
       .modal.show {
@@ -236,6 +237,7 @@
         width: auto;
         margin: 1.75rem auto;
         max-width: 800px;
+        pointer-events: auto;
       }
 
       .modal-content {
@@ -247,6 +249,7 @@
         border: 1px solid rgba(0, 0, 0, 0.2);
         border-radius: 0.3rem;
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        pointer-events: auto;
       }
 
       .modal-header {
@@ -261,6 +264,7 @@
         position: relative;
         flex: 1 1 auto;
         padding: 1rem;
+        overflow-y: auto;
       }
 
       .modal-footer {
@@ -279,6 +283,15 @@
       [data-bs-theme="dark"] .modal-header,
       [data-bs-theme="dark"] .modal-footer {
         border-color: #404040;
+      }
+
+      /* Ensure modal is visible when shown */
+      [x-show] {
+        display: none;
+      }
+
+      [x-show].show {
+        display: block;
       }
     </style>
   </head>
@@ -560,6 +573,18 @@
                     <code class="d-block mb-2" x-text="selectedPeer.tailscale_ips.join('\n')"></code>
                     <h6>Allowed IPs</h6>
                     <code class="d-block mb-2" x-text="selectedPeer.allowed_ips.join('\n')"></code>
+                  </div>
+                </div>
+                <template x-if="selectedPeer.pingStats">
+                  <div class="card mb-3">
+                    <div class="card-header">Ping Results</div>
+                    <div class="card-body">
+                      <div class="mb-2">
+                        <small class="text-muted">Last Ping:</small><br>
+                        <span x-text="selectedPeer.lastPing"></span>
+                      </div>
+                      <div class="mb-2">
+                        <small class="text-muted">Connection Type:</small><br>
                     <template x-if="selectedPeer.pingStats">
                       <div class="mt-3">
                         <h6>Ping Statistics</h6>
