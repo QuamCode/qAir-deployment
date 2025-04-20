@@ -271,72 +271,25 @@ case "$action" in
   "tailscale_netcheck")
     if [ -n "$($SUDO $TAILSCALE status 2>/dev/null)" ]; then
       TS_OUT=$($SUDO $TAILSCALE netcheck 2>&1)
-      # Escape special characters and newlines
-      TS_OUT=$(echo "$TS_OUT" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
       ts_json=$(get_tailscale_status)
       echo "{\"status\": \"Network check completed\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
     else
       echo '{"error": "Tailscale is not running"}'
     fi
     ;;
-  "tailscale_speedtest")
+  "tailscale_ping")
     if [ -n "$($SUDO $TAILSCALE status 2>/dev/null)" ]; then
-      # Use iperf3 if available, otherwise use a simple ping-based estimation
-      if command -v iperf3 >/dev/null 2>&1; then
-        TS_OUT=$($SUDO iperf3 -c speedtest.tailscale.com -t 5 2>&1)
-      else
-        # Simple ping-based estimation
-        TS_OUT="Speed test (ping-based estimation):\n"
-        for i in {1..5}; do
-          ping_time=$($SUDO ping -c 1 speedtest.tailscale.com | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
-          TS_OUT="${TS_OUT}Test $i: $ping_time ms\n"
-        done
-      fi
-      # Escape special characters and newlines
-      TS_OUT=$(echo "$TS_OUT" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+      TS_OUT=$($SUDO $TAILSCALE ping -c 4 "$param" 2>&1)
       ts_json=$(get_tailscale_status)
-      echo "{\"status\": \"Speed test completed\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
-    else
-      echo '{"error": "Tailscale is not running"}'
-    fi
-    ;;
-  "tailscale_traceroute")
-    if [ -n "$($SUDO $TAILSCALE status 2>/dev/null)" ]; then
-      if [ -n "$param" ]; then
-        # Get the IP address for the peer
-        peer_ip=$(echo "$($SUDO $TAILSCALE status --json)" | $JQBINARY -r --arg id "$param" '.Peer[] | select(.ID == $id) | .TailscaleIPs[0]')
-        if [ -n "$peer_ip" ]; then
-          TS_OUT=$($SUDO traceroute -n "$peer_ip" 2>&1)
-        else
-          echo '{"error": "Could not find IP address for peer"}'
-          exit 0
-        fi
-      else
-        TS_OUT=$($SUDO traceroute -n speedtest.tailscale.com 2>&1)
-      fi
-      # Escape special characters and newlines
-      TS_OUT=$(echo "$TS_OUT" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-      ts_json=$(get_tailscale_status)
-      echo "{\"status\": \"Traceroute completed\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
+      echo "{\"status\": \"Ping completed\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
     else
       echo '{"error": "Tailscale is not running"}'
     fi
     ;;
   "tailscale_debug")
     if [ -n "$($SUDO $TAILSCALE status 2>/dev/null)" ]; then
-      TS_OUT=$($SUDO $TAILSCALE debug 2>&1)
-      # Get key rotation info
-      KEY_ROTATION=$($SUDO $TAILSCALE debug | grep "Key rotation" | cut -d':' -f2 | xargs)
-      # Get last audit time
-      LAST_AUDIT=$($SUDO $TAILSCALE debug | grep "Last audit" | cut -d':' -f2 | xargs)
-      # Get recent events
-      RECENT_EVENTS=$($SUDO $TAILSCALE debug | grep -A 5 "Recent events" | tail -n +2)
-      # Escape special characters and newlines
-      TS_OUT=$(echo "$TS_OUT" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+      TS_OUT=$($SUDO $TAILSCALE debug --json 2>&1)
       ts_json=$(get_tailscale_status)
-      # Add security info to the JSON
-      ts_json=$(echo "$ts_json" | $JQBINARY --arg key_rot "$KEY_ROTATION" --arg last_audit "$LAST_AUDIT" \
-        '. + {keyRotation: $key_rot, lastAudit: $last_audit}')
       echo "{\"status\": \"Debug info retrieved\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
     else
       echo '{"error": "Tailscale is not running"}'

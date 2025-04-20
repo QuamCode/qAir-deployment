@@ -233,17 +233,6 @@
                               </div>
                             </div>
                           </div>
-                          <div class="mb-2">
-                            <strong>Connection Quality:</strong>
-                            <div class="progress mt-1">
-                              <div class="progress-bar" :class="getQualityClass()" role="progressbar" 
-                                   :style="'width: ' + tailscaleStatus.connectionQuality + '%'"
-                                   :aria-valuenow="tailscaleStatus.connectionQuality"
-                                   aria-valuemax="100">
-                                <span x-text="tailscaleStatus.connectionQuality + '%'"></span>
-                              </div>
-                            </div>
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -254,63 +243,7 @@
                           <div class="btn-group-vertical w-100">
                             <button class="btn btn-sm btn-outline-secondary" @click="runCommand('tailscale_debug')">Debug Info</button>
                             <button class="btn btn-sm btn-outline-secondary" @click="runCommand('tailscale_restart')">Restart Service</button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Diagnostic Tools -->
-                <div class="mt-3" x-show="tailscaleStatus.connected">
-                  <h6>Diagnostic Tools</h6>
-                  <div class="row">
-                    <div class="col-md-6">
-                      <div class="card">
-                        <div class="card-body">
-                          <h6 class="card-title">Connection Tests</h6>
-                          <div class="btn-group-vertical w-100">
-                            <button class="btn btn-sm btn-outline-primary" @click="runCommand('tailscale_netcheck')">Run Network Check</button>
-                            <button class="btn btn-sm btn-outline-primary" @click="runCommand('tailscale_speedtest')">Run Speed Test</button>
-                            <button class="btn btn-sm btn-outline-primary" @click="runCommand('tailscale_traceroute')">Run Traceroute</button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="col-md-6">
-                      <div class="card">
-                        <div class="card-body">
-                          <h6 class="card-title">Network Path</h6>
-                          <div id="pathContainer" style="width:100%; height:200px; border:1px solid #ddd;"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Security Information -->
-                <div class="mt-3" x-show="tailscaleStatus.connected">
-                  <h6>Security Information</h6>
-                  <div class="card">
-                    <div class="card-body">
-                      <div class="row">
-                        <div class="col-md-6">
-                          <h6>Connection Security</h6>
-                          <p>
-                            <strong>Encryption:</strong> <span class="badge bg-success">Enabled</span><br>
-                            <strong>Key Rotation:</strong> <span x-text="tailscaleStatus.keyRotation"></span><br>
-                            <strong>Last Security Audit:</strong> <span x-text="tailscaleStatus.lastAudit"></span>
-                          </p>
-                        </div>
-                        <div class="col-md-6">
-                          <h6>Recent Activity</h6>
-                          <div class="list-group list-group-flush">
-                            <template x-for="event in tailscaleStatus.recentEvents" :key="event.id">
-                              <div class="list-group-item">
-                                <small class="text-muted" x-text="event.time"></small><br>
-                                <span x-text="event.message"></span>
-                              </div>
-                            </template>
+                            <button class="btn btn-sm btn-outline-secondary" @click="runCommand('tailscale_prefs')">View Preferences</button>
                           </div>
                         </div>
                       </div>
@@ -392,11 +325,7 @@
             yourIP: "",
             dnsStatus: "",
             lastUpdate: "",
-            avgLatency: 0,
-            connectionQuality: 0,
-            keyRotation: "",
-            lastAudit: "",
-            recentEvents: []
+            avgLatency: 0
           },
           sshKeys: [],
           newSshPort: "",
@@ -411,20 +340,11 @@
             fetch(url)
               .then(response => response.json())
               .then(data => {
-                if (data.error) { 
-                  this.logOutput += "Error: " + data.error + "\n"; 
-                } else if (data.status) { 
-                  this.logOutput += data.status + "\n"; 
-                  if (data.output) {
-                    this.logOutput += data.output.replace(/\\n/g, '\n') + "\n";
-                  }
-                }
+                if (data.error) { this.logOutput += "Error: " + data.error + "\n"; }
+                else if (data.status) { this.logOutput += data.status + "\n"; }
                 this.fetchAllStatus();
               })
-              .catch(error => { 
-                this.logOutput += "Fetch error: " + error + "\n"; 
-                console.error("Command error:", error);
-              });
+              .catch(error => { this.logOutput += "Fetch error: " + error + "\n"; });
           },
     
           fetchAllStatus() {
@@ -609,23 +529,6 @@
               if (ipMatch) {
                 this.tailscaleStatus.yourIP = ipMatch[1];
               }
-
-              // Extract average latency from netcheck output
-              if (output.includes('derp latency')) {
-                const latencies = output.match(/\d+\.\d+ms/g) || [];
-                if (latencies.length > 0) {
-                  const sum = latencies.reduce((acc, curr) => acc + parseFloat(curr), 0);
-                  this.tailscaleStatus.avgLatency = Math.round(sum / latencies.length);
-                }
-              }
-
-              // Extract connection quality
-              if (output.includes('connection quality')) {
-                const qualityMatch = output.match(/connection quality: (\d+)%/);
-                if (qualityMatch) {
-                  this.tailscaleStatus.connectionQuality = parseInt(qualityMatch[1]);
-                }
-              }
             }
           },
     
@@ -641,12 +544,6 @@
             if (this.tailscaleStatus.avgLatency < 50) return 'bg-success';
             if (this.tailscaleStatus.avgLatency < 100) return 'bg-warning';
             return 'bg-danger';
-          },
-    
-          getQualityClass() {
-            if (this.tailscaleStatus.connectionQuality < 50) return 'bg-danger';
-            if (this.tailscaleStatus.connectionQuality < 75) return 'bg-warning';
-            return 'bg-success';
           },
         };
       }
