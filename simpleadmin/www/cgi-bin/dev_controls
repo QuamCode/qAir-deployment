@@ -49,8 +49,10 @@ get_ssh_status() {
   else
     enabled=false
   fi
-  ssh_port=$(grep -E '^[[:space:]]*Port ' /etc/ssh/sshd_config | tail -n1 | sed 's/^[#[:space:]]*Port //')
-  [ -z "$ssh_port" ] && ssh_port="22"
+  
+  # Get SSH port - look for the last uncommented Port line
+  ssh_port=$(grep -E '^[[:space:]]*Port[[:space:]]+[0-9]+' /etc/ssh/sshd_config | tail -n1 | sed 's/^[[:space:]]*Port[[:space:]]*//')
+  [ -z "$ssh_port" ] && ssh_port="22"  # Default if not found
 
   # Get authentication method
   auth_method="both"
@@ -278,16 +280,36 @@ case "$action" in
     ;;
   "ssh_change_port")
     if [ -n "$param" ]; then
-      if $SUDO grep -qE '^[[:space:]]*Port ' /etc/ssh/sshd_config; then
-        $SUDO sed -i -E "s/^[#[:space:]]*Port .*/Port $param/" /etc/ssh/sshd_config
-      else
-        $SUDO sh -c "echo 'Port $param' >> /etc/ssh/sshd_config"
+      # Validate port number
+      if ! [[ "$param" =~ ^[0-9]+$ ]] || [ "$param" -lt 1 ] || [ "$param" -gt 65535 ]; then
+        echo '{"error": "Invalid port number"}' && exit 1
       fi
+
+      # Backup the config file
+      $SUDO cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+
+      # Remove any existing Port lines
+      $SUDO sed -i '/^[[:space:]]*Port[[:space:]]/d' /etc/ssh/sshd_config
+
+      # Add the new Port line
+      $SUDO sh -c "echo 'Port $param' >> /etc/ssh/sshd_config"
+
+      # Verify the change was made
+      if ! grep -qE "^[[:space:]]*Port[[:space:]]+$param" /etc/ssh/sshd_config; then
+        # Restore backup if change failed
+        $SUDO mv /etc/ssh/sshd_config.bak /etc/ssh/sshd_config
+        echo '{"error": "Failed to update SSH port"}' && exit 1
+      fi
+
+      # Restart SSH service to apply changes
       if ! $SUDO $SYSTEMCTL restart sshd 2>/dev/null; then
         if ! service sshd restart 2>/dev/null; then
-          echo "{\"error\": \"Failed to restart sshd\"}" && exit 1
+          # Restore backup if restart failed
+          $SUDO mv /etc/ssh/sshd_config.bak /etc/ssh/sshd_config
+          echo '{"error": "Failed to restart sshd"}' && exit 1
         fi
       fi
+
       sleep 1
       ssh_json=$(get_ssh_status)
       echo "{\"status\": \"SSH port changed to $param\", \"ssh\": $ssh_json}"
