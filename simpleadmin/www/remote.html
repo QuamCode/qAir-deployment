@@ -519,7 +519,10 @@
                   <div class="card-body">
                     <h6 class="card-title">Hostname Configuration</h6>
                     <div class="input-group">
-                      <input type="text" class="form-control" placeholder="Enter hostname" x-model="tailscaleHostname">
+                      <input type="text" class="form-control" placeholder="Enter hostname" 
+                             x-model="tailscaleHostname"
+                             pattern="[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]"
+                             title="Hostname must start and end with a letter or number, and can only contain letters, numbers, and hyphens">
                       <button class="btn btn-primary" @click="updateHostname()" :disabled="!tailscaleStatus.connected">
                         <i class="bi bi-save"></i> Update Hostname
                       </button>
@@ -732,6 +735,11 @@
                   // Ensure peers is always an array
                   if (!data.tailscale.peers || !Array.isArray(data.tailscale.peers)) {
                     data.tailscale.peers = [];
+                  }
+                  
+                  // Update the hostname input if it's empty and we have a current hostname
+                  if (!this.tailscaleHostname && data.tailscale.hostname) {
+                    this.tailscaleHostname = data.tailscale.hostname;
                   }
                   
                   const newPeersJson = JSON.stringify(data.tailscale.peers);
@@ -1266,12 +1274,27 @@
               return;
             }
             
-            if (!this.tailscaleHostname.trim()) {
+            // Basic hostname validation
+            const hostname = this.tailscaleHostname.trim();
+            if (!hostname) {
               console.error("Error: Hostname cannot be empty");
               return;
             }
 
-            fetch('/cgi-bin/dev_controls?action=tailscale_set_hostname&hostname=' + encodeURIComponent(this.tailscaleHostname.trim()))
+            // Validate hostname format
+            const hostnameRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]$/;
+            if (!hostnameRegex.test(hostname)) {
+              console.error("Error: Invalid hostname format. Must start and end with a letter or number, and can only contain letters, numbers, and hyphens");
+              return;
+            }
+
+            // Validate length (max 63 characters as per RFC 1035)
+            if (hostname.length > 63) {
+              console.error("Error: Hostname cannot be longer than 63 characters");
+              return;
+            }
+
+            fetch('/cgi-bin/dev_controls?action=tailscale_set_hostname&hostname=' + encodeURIComponent(hostname))
               .then(response => response.json())
               .then(data => {
                 if (data.error) {

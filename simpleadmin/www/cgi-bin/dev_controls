@@ -513,9 +513,24 @@ case "$action" in
     ;;
   "tailscale_set_hostname")
     if [ -n "$hostname" ]; then
+      # Validate hostname format
+      if ! echo "$hostname" | grep -qE '^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]$'; then
+        echo '{"error": "Invalid hostname format. Must start and end with a letter or number, and can only contain letters, numbers, and hyphens"}' && exit 1
+      fi
+
+      # Validate length (max 63 characters as per RFC 1035)
+      if [ ${#hostname} -gt 63 ]; then
+        echo '{"error": "Hostname cannot be longer than 63 characters"}' && exit 1
+      fi
+
       if [ -n "$($SUDO $TAILSCALE status 2>/dev/null)" ]; then
-        TS_OUT=$($SUDO $TAILSCALE set --hostname="$hostname" 2>&1)
+        # First, bring Tailscale down
+        $SUDO $TAILSCALE down 2>/dev/null
+        sleep 1
+        # Then bring it back up with the new hostname
+        TS_OUT=$($SUDO $TAILSCALE up --accept-dns=false --hostname="$hostname" 2>&1)
         if [ $? -eq 0 ]; then
+          sleep 1
           ts_json=$(get_tailscale_status)
           echo "{\"status\": \"Hostname updated to $hostname\", \"tailscale\": $ts_json}"
         else
