@@ -35,6 +35,9 @@
         --edge-pending: #f39c12;
         --graph-bg: #ffffff;
         --graph-border: #e0e0e0;
+        --status-disabled: #95a5a6;
+        --node-peer-disabled: #95a5a6;
+        --edge-disabled: #95a5a6;
       }
 
       body {
@@ -108,6 +111,12 @@
         background-color: var(--status-info);
         color: var(--status-info);
         box-shadow: 0 0 8px var(--status-info);
+      }
+
+      .status-disabled { 
+        background-color: var(--status-disabled);
+        color: var(--status-disabled);
+        box-shadow: 0 0 8px var(--status-disabled);
       }
 
       /* Graph container styling */
@@ -593,27 +602,35 @@
                         </tr>
                       </thead>
                       <tbody>
-                        <template x-for="peer in tailscaleStatus.peers" :key="peer.id">
+                        <template x-for="peer in tailscaleStatus.peers.filter(p => p && p.id && p.name)" :key="peer.id">
                           <tr>
                             <td>
-                              <a :href="'https://login.tailscale.com/admin/machines/' + peer.tailscale_ips[0]" target="_blank" class="text-decoration-none">
+                              <a :href="'https://login.tailscale.com/admin/machines/' + (peer.tailscale_ips ? peer.tailscale_ips[0] : '')" target="_blank" class="text-decoration-none">
                                 <span x-text="peer.name"></span>
                               </a>
                             </td>
-                            <td x-text="peer.os"></td>
+                            <td x-text="peer.os || 'Unknown'"></td>
                             <td>
-                              <span class="status-indicator" :class="peer.online ? 'status-online' : 'status-offline'"></span>
-                              <span x-text="peer.online ? 'Online' : 'Offline'"></span>
+                              <span class="status-indicator" 
+                                    :class="tailscaleStatus.connected ? (peer.online ? 'status-online' : 'status-offline') : 'status-disabled'"></span>
+                              <span x-text="tailscaleStatus.connected ? (peer.online ? 'Online' : 'Offline') : 'Disabled'"></span>
                               <template x-if="peer.online && peer.pingStats && peer.pingStats.avg">
                                 <span class="text-muted ms-2" x-text="peer.pingStats.avg.toFixed(0) + ' ms'"></span>
                               </template>
                             </td>
-                            <td x-text="peer.last_seen"></td>
-                            <td x-text="peer.tailscale_ips.join(', ')"></td>
+                            <td x-text="peer.last_seen !== '0001-01-01T00:00:00Z' ? peer.last_seen : 'Never'"></td>
+                            <td x-text="peer.tailscale_ips ? peer.tailscale_ips.join(', ') : 'N/A'"></td>
                             <td>
-                              <button class="btn btn-sm btn-outline-primary" @click="pingPeer(peer.id)">
+                              <button class="btn btn-sm btn-outline-primary" @click="pingPeer(peer.id)" :disabled="!peer.online || !tailscaleStatus.connected">
                                 <i class="bi bi-activity"></i> Ping
                               </button>
+                            </td>
+                          </tr>
+                        </template>
+                        <template x-if="!tailscaleStatus.peers || !tailscaleStatus.peers.filter(p => p && p.id && p.name).length">
+                          <tr>
+                            <td colspan="6" class="text-center text-muted">
+                              No peers available
                             </td>
                           </tr>
                         </template>
@@ -831,27 +848,34 @@
                 type: 'self'
               } 
             });
-            // Add peer nodes and edges
-            this.tailscaleStatus.peers.forEach(peer => {
-              elements.push({
-                data: {
-                  id: peer.id,
-                  label: peer.name,
-                  os: peer.os,
-                  online: peer.online,
-                  ips: peer.tailscale_ips.join(", "),
-                  type: 'peer'
+            
+            // Add peer nodes and edges, only if peers exist and are valid
+            if (this.tailscaleStatus.peers && this.tailscaleStatus.peers.length > 0) {
+              this.tailscaleStatus.peers.forEach(peer => {
+                if (peer && peer.id && peer.name) {
+                  elements.push({
+                    data: {
+                      id: peer.id,
+                      label: peer.name,
+                      os: peer.os || 'Unknown',
+                      online: peer.online || false,
+                      ips: peer.tailscale_ips ? peer.tailscale_ips.join(", ") : 'N/A',
+                      type: 'peer',
+                      disabled: !this.tailscaleStatus.connected
+                    }
+                  });
+                  elements.push({
+                    data: { 
+                      id: 'edge-' + peer.id, 
+                      source: 'self', 
+                      target: peer.id,
+                      online: peer.online || false,
+                      disabled: !this.tailscaleStatus.connected
+                    }
+                  });
                 }
               });
-              elements.push({
-                data: { 
-                  id: 'edge-' + peer.id, 
-                  source: 'self', 
-                  target: peer.id,
-                  online: peer.online
-                }
-              });
-            });
+            }
             return elements;
           },
     
@@ -897,6 +921,9 @@
                     'color': '#fff',
                     'font-family': '"Fira Code", monospace',
                     'background-color': function(ele) {
+                      if (ele.data('disabled')) {
+                        return '#95a5a6';
+                      }
                       return ele.data('online') ? '#2ecc71' : '#e74c3c';
                     },
                     'width': 50,
@@ -913,11 +940,19 @@
                   style: {
                     'width': 2,
                     'line-color': function(ele) {
+                      if (ele.data('disabled')) {
+                        return '#95a5a6';
+                      }
                       return ele.data('online') ? '#2ecc71' : '#e74c3c';
                     },
                     'curve-style': 'bezier',
-                    'opacity': 0.6,
+                    'opacity': function(ele) {
+                      return ele.data('disabled') ? 0.3 : 0.6;
+                    },
                     'line-style': function(ele) {
+                      if (ele.data('disabled')) {
+                        return 'dashed';
+                      }
                       return ele.data('online') ? 'solid' : 'dashed';
                     }
                   }
@@ -966,8 +1001,10 @@
           },
     
           updateTailscaleStatus(data) {
-            // Ensure peers is always an array, even if data.peers is undefined
-            const peers = Array.isArray(data.peers) ? data.peers : [];
+            // Ensure peers is always an array and filter out empty peers
+            const peers = Array.isArray(data.peers) 
+              ? data.peers.filter(peer => peer && peer.id && peer.name) 
+              : [];
             
             // Create a new object with all the data, ensuring peers is always an array
             const newStatus = {
