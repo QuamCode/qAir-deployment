@@ -152,6 +152,12 @@ get_tailscale_status() {
     ip_connected=false
   fi
 
+  # Get current hostname
+  ts_hostname=$($SUDO $TAILSCALE status --json 2>/dev/null | $JQBINARY -r '.Self.HostName // empty')
+  if [ -z "$ts_hostname" ]; then
+    ts_hostname=""
+  fi
+
   # Retrieve status in JSON format.
   ts_json=$($SUDO $TAILSCALE status --json 2>/dev/null)
   first_char=$(echo "$ts_json" | cut -c1)
@@ -210,7 +216,7 @@ get_tailscale_status() {
       fi
   fi
 
-  echo "{\"connected\": $connected, \"statusText\": \"$statusText\", \"loginURL\": \"$ts_loginURL\", \"output\": \"$safe_output\", \"peers\": $ts_peers}"
+  echo "{\"connected\": $connected, \"statusText\": \"$statusText\", \"loginURL\": \"$ts_loginURL\", \"output\": \"$safe_output\", \"peers\": $ts_peers, \"hostname\": \"$ts_hostname\"}"
 }
 
 # --- SSH Key Management Functions ---
@@ -503,6 +509,23 @@ case "$action" in
       echo "{\"status\": \"Preferences retrieved\", \"output\": \"$TS_OUT\", \"tailscale\": $ts_json}"
     else
       echo '{"error": "Tailscale is not running"}'
+    fi
+    ;;
+  "tailscale_set_hostname")
+    if [ -n "$hostname" ]; then
+      if [ -n "$($SUDO $TAILSCALE status 2>/dev/null)" ]; then
+        TS_OUT=$($SUDO $TAILSCALE set --hostname="$hostname" 2>&1)
+        if [ $? -eq 0 ]; then
+          ts_json=$(get_tailscale_status)
+          echo "{\"status\": \"Hostname updated to $hostname\", \"tailscale\": $ts_json}"
+        else
+          echo "{\"error\": \"Failed to update hostname: $TS_OUT\"}"
+        fi
+      else
+        echo '{"error": "Tailscale is not running"}'
+      fi
+    else
+      echo '{"error": "Hostname not provided"}'
     fi
     ;;
   "all_status")

@@ -513,6 +513,21 @@
                     </div>
                   </div>
                 </div>
+
+                <!-- Hostname Configuration -->
+                <div class="card mt-3">
+                  <div class="card-body">
+                    <h6 class="card-title">Hostname Configuration</h6>
+                    <div class="input-group">
+                      <input type="text" class="form-control" placeholder="Enter hostname" x-model="tailscaleHostname">
+                      <button class="btn btn-primary" @click="updateHostname()" :disabled="!tailscaleStatus.connected">
+                        <i class="bi bi-save"></i> Update Hostname
+                      </button>
+                    </div>
+                    <small class="text-muted">Current hostname: <span x-text="tailscaleStatus.hostname || 'Not set'"></span></small>
+                  </div>
+                </div>
+
                 <div class="progress mt-3">
                   <div class="progress-bar bg-success" role="progressbar" 
                        :style="'width: ' + (tailscaleStatus.peers.filter(p => p.online).length / tailscaleStatus.peers.length * 100) + '%'"
@@ -527,11 +542,6 @@
                     <div class="alert alert-info">
                       <h6 class="alert-heading">Login Required</h6>
                       <p class="mb-2">Click the button below to start Tailscale and get the login URL.</p>
-                      <div class="mb-3">
-                        <label for="hostname" class="form-label">Hostname (optional)</label>
-                        <input type="text" class="form-control" id="hostname" x-model="tailscaleHostname" placeholder="Enter a custom hostname">
-                        <small class="text-muted">Leave blank to use the default hostname</small>
-                      </div>
                       <a :href="tailscaleStatus.loginURL" target="_blank" class="btn btn-primary" @click="runCommand('tailscale_up', tailscaleHostname)">
                         <i class="bi bi-box-arrow-up-right"></i> Login to Tailscale
                       </a>
@@ -547,11 +557,8 @@
                   </div>
                 </div>
 
-                <!-- Debug Info (temporary) -->
-                <div class="mt-2 text-muted small" x-text="'Status: ' + tailscaleStatus.statusText + ', URL: ' + tailscaleStatus.loginURL"></div>
-
                 <div class="btn-group w-100 mt-3">
-                  <button class="btn btn-success" @click="runCommand('tailscale_up')" :disabled="tailscaleStatus.connected">
+                  <button class="btn btn-success" @click="runCommand('tailscale_up', tailscaleHostname)" :disabled="tailscaleStatus.connected">
                     <i class="bi bi-power"></i> Connect
                   </button>
                   <button class="btn btn-danger" @click="runCommand('tailscale_down')" :disabled="!tailscaleStatus.connected">
@@ -1251,6 +1258,32 @@
               return parts.slice(2).join(' ');
             }
             return 'No comment';
+          },
+
+          updateHostname() {
+            if (!this.tailscaleStatus.connected) {
+              console.error("Error: Tailscale must be connected to update hostname");
+              return;
+            }
+            
+            if (!this.tailscaleHostname.trim()) {
+              console.error("Error: Hostname cannot be empty");
+              return;
+            }
+
+            fetch('/cgi-bin/dev_controls?action=tailscale_set_hostname&hostname=' + encodeURIComponent(this.tailscaleHostname.trim()))
+              .then(response => response.json())
+              .then(data => {
+                if (data.error) {
+                  console.error("Error:", data.error);
+                } else {
+                  console.log("Hostname updated successfully");
+                  this.fetchAllStatus();
+                }
+              })
+              .catch(error => {
+                console.error("Error updating hostname:", error);
+              });
           }
         };
       }
