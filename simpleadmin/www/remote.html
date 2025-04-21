@@ -528,7 +528,7 @@
                 <!-- Connecting State -->
                 <div class="mt-3" x-show="tailscaleStatus.connecting">
                   <div class="alert alert-warning">
-                    <h6 class="alert-heading">Connecting...</h6>
+                    <h6 class="alert-heading">Connecting</h6>
                     <p class="mb-0">Please wait while Tailscale establishes the connection.</p>
                   </div>
                 </div>
@@ -709,6 +709,8 @@
                 console.error("Status fetch error:", error);
                 // Clear connecting state on error
                 this.tailscaleStatus.connecting = false;
+                // Ensure peers is an empty array on error
+                this.tailscaleStatus.peers = [];
               });
           },
     
@@ -964,9 +966,13 @@
           },
     
           updateTailscaleStatus(data) {
+            // Ensure peers is always an array
+            const peers = Array.isArray(data.peers) ? data.peers : [];
+            
             this.tailscaleStatus = {
               ...this.tailscaleStatus,
               ...data,
+              peers: peers, // Override peers with the ensured array
               lastUpdate: new Date().toLocaleTimeString()
             };
             
