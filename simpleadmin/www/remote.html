@@ -525,6 +525,14 @@
                   </div>
                 </template>
 
+                <!-- Connecting State -->
+                <div class="mt-3" x-show="tailscaleStatus.connecting">
+                  <div class="alert alert-warning">
+                    <h6 class="alert-heading">Connecting...</h6>
+                    <p class="mb-0">Please wait while Tailscale establishes the connection.</p>
+                  </div>
+                </div>
+
                 <!-- Debug Info (temporary) -->
                 <div class="mt-2 text-muted small" x-text="'Status: ' + tailscaleStatus.statusText + ', URL: ' + tailscaleStatus.loginURL"></div>
 
@@ -617,23 +625,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Output Log -->
-        <div class="row">
-          <div class="col-12">
-            <div class="card">
-              <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Output Log</h5>
-                <button class="btn btn-sm btn-outline-secondary" @click="clearLog">
-                  <i class="bi i-trash"></i> Clear
-                </button>
-              </div>
-              <div class="card-body">
-                <textarea class="form-control" rows="10" x-model="logOutput" readonly></textarea>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </main>
 
@@ -652,11 +643,11 @@
             yourIP: "",
             dnsStatus: "",
             lastUpdate: "",
-            avgLatency: 0
+            avgLatency: 0,
+            connecting: false
           },
           sshKeys: [],
           newSshPort: "",
-          logOutput: "",
           cy: null,
           lastPeersJson: "",
           selectedPeer: null,
@@ -665,19 +656,30 @@
           runCommand(action, param = null) {
             let url = '/cgi-bin/dev_controls?action=' + action;
             if (param !== null) { url += '&port=' + param; }
+            
+            // Set connecting state for tailscale_up
+            if (action === 'tailscale_up') {
+              this.tailscaleStatus.connecting = true;
+              this.tailscaleStatus.statusText = "Connecting...";
+              // Set a timeout to clear connecting state after 1 minute
+              setTimeout(() => {
+                if (this.tailscaleStatus.connecting) {
+                  this.tailscaleStatus.connecting = false;
+                  this.tailscaleStatus.statusText = "Connection timed out";
+                }
+              }, 60000);
+            }
+
             fetch(url)
               .then(response => response.json())
               .then(data => {
                 if (data.error) { 
-                  this.logOutput += "Error: " + data.error + "\n"; 
-                }
-                else if (data.status) { 
-                  this.logOutput += data.status + "\n"; 
+                  console.error("Error:", data.error);
                 }
                 this.fetchAllStatus();
               })
               .catch(error => { 
-                this.logOutput += "Fetch error: " + error + "\n"; 
+                console.error("Fetch error:", error);
               });
           },
     
@@ -687,6 +689,14 @@
               .then(data => {
                 if (data.ssh) { this.sshStatus = data.ssh; }
                 if (data.tailscale) {
+                  // Clear connecting state when we get a status update
+                  this.tailscaleStatus.connecting = false;
+                  
+                  // Ensure peers is always an array
+                  if (!data.tailscale.peers || !Array.isArray(data.tailscale.peers)) {
+                    data.tailscale.peers = [];
+                  }
+                  
                   const newPeersJson = JSON.stringify(data.tailscale.peers);
                   this.updateTailscaleStatus(data.tailscale);
                   if(newPeersJson !== this.lastPeersJson) {
@@ -695,7 +705,11 @@
                   }
                 }
               })
-              .catch(error => { console.error("Status fetch error:", error); });
+              .catch(error => { 
+                console.error("Status fetch error:", error);
+                // Clear connecting state on error
+                this.tailscaleStatus.connecting = false;
+              });
           },
     
           fetchKeys() {
@@ -755,29 +769,29 @@
     
           updateAuthMethod(method) {
             if (!method) {
-              this.logOutput += "Error: Please select an authentication method\n";
+              console.error("Error: Please select an authentication method");
               return;
             }
             fetch('/cgi-bin/dev_controls?action=ssh_set_auth&method=' + method)
               .then(response => response.json())
               .then(data => {
                 if (data.error) {
-                  this.logOutput += "Error: " + data.error + "\n";
+                  console.error("Error:", data.error);
                 } else {
-                  this.logOutput += "Authentication method updated to: " + method + "\n";
+                  console.log("Authentication method updated to:", method);
                   // Update the local state to match the server
                   this.sshStatus.authMethod = method;
                   this.fetchAllStatus();
                 }
               })
               .catch(error => {
-                this.logOutput += "Error updating authentication method: " + error + "\n";
+                console.error("Error updating authentication method:", error);
               });
           },
     
           uploadKey() {
             if (!this.selectedFile) {
-              this.logOutput += "Error: Please select a key file first\n";
+              console.error("Error: Please select a key file first");
               return;
             }
             const reader = new FileReader();
@@ -790,16 +804,16 @@
               .then(response => response.json())
               .then(data => {
                 if (data.error) {
-                  this.logOutput += "Error: " + data.error + "\n";
+                  console.error("Error:", data.error);
                 } else {
-                  this.logOutput += "SSH public key uploaded successfully\n";
+                  console.log("SSH public key uploaded successfully");
                   this.selectedFile = null;
                   document.getElementById('keyFile').value = '';
                   this.fetchKeys();
                 }
               })
               .catch(error => {
-                this.logOutput += "Error uploading key: " + error + "\n";
+                console.error("Error uploading key:", error);
               });
             };
             reader.readAsText(this.selectedFile);
@@ -971,13 +985,13 @@
             if (!id) return;
             const peer = this.tailscaleStatus.peers.find(p => p.id === id);
             if (!peer) {
-              this.logOutput += "Error: Peer not found\n";
+              console.error("Error: Peer not found");
               return;
             }
 
             const peerIP = peer.tailscale_ips[0];
             if (!peerIP) {
-              this.logOutput += "Error: No IP address found for peer\n";
+              console.error("Error: No IP address found for peer");
               return;
             }
 
@@ -988,9 +1002,9 @@
                   const data = JSON.parse(text);
                   
                   if (data.error) {
-                    this.logOutput += "Error: " + data.error + "\n";
+                    console.error("Error:", data.error);
                   } else if (data.status) {
-                    this.logOutput += data.status + "\n";
+                    console.log(data.status);
                     if (data.output) {
                       const rawOutput = data.output;
                       const lines = rawOutput.split('pong from');
@@ -1017,7 +1031,7 @@
                             if (stats.min === null || latencyNum < stats.min) stats.min = latencyNum;
                             if (stats.max === null || latencyNum > stats.max) stats.max = latencyNum;
                             stats.derpServer = derp;
-                            this.logOutput += `Ping to ${host} (${ip}) via ${derp}: ${latency}ms\n`;
+                            console.log(`Ping to ${host} (${ip}) via ${derp}: ${latency}ms`);
                           }
                         }
                       });
@@ -1025,10 +1039,10 @@
                       // Check for connection type
                       if (rawOutput.includes('direct connection not established')) {
                         stats.connectionType = 'DERP relay';
-                        this.logOutput += `Connection type: DERP relay\n`;
+                        console.log(`Connection type: DERP relay`);
                       } else if (rawOutput.includes('direct connection established')) {
                         stats.connectionType = 'Direct';
-                        this.logOutput += `Connection type: Direct\n`;
+                        console.log(`Connection type: Direct`);
                       }
 
                       // Calculate statistics
@@ -1036,9 +1050,9 @@
                       stats.lost = stats.sent - stats.received;
                       if (stats.received > 0) {
                         stats.avg = (stats.min + stats.max) / 2;
-                        this.logOutput += `\nPing statistics:\n`;
-                        this.logOutput += `Packets: Sent = ${stats.sent}, Received = ${stats.received}, Lost = ${stats.lost} (${(stats.lost/stats.sent*100).toFixed(1)}% loss)\n`;
-                        this.logOutput += `Round-trip min/avg/max = ${stats.min}/${stats.avg.toFixed(2)}/${stats.max} ms\n`;
+                        console.log(`\nPing statistics:\n`);
+                        console.log(`Packets: Sent = ${stats.sent}, Received = ${stats.received}, Lost = ${stats.lost} (${(stats.lost/stats.sent*100).toFixed(1)}% loss)`);
+                        console.log(`Round-trip min/avg/max = ${stats.min}/${stats.avg.toFixed(2)}/${stats.max} ms`);
                       }
 
                       // Update peer in the table
@@ -1062,13 +1076,13 @@
                     }
                   }
                 } catch (error) {
-                  this.logOutput += "Error parsing ping response: " + error + "\n";
-                  this.logOutput += "Raw response: " + text + "\n";
+                  console.error("Error parsing ping response:", error);
+                  console.error("Raw response:", text);
                 }
                 this.fetchAllStatus();
               })
               .catch(error => {
-                this.logOutput += "Ping error: " + error + "\n";
+                console.error("Ping error:", error);
               });
           },
     
@@ -1123,17 +1137,13 @@
             Alpine.initTree(tooltip);
           },
     
-          clearLog() {
-            this.logOutput = "";
-          },
-    
           copyKey(key) {
             navigator.clipboard.writeText(key)
               .then(() => {
-                this.logOutput += "Key copied to clipboard\n";
+                console.log("Key copied to clipboard");
               })
               .catch(err => {
-                this.logOutput += "Failed to copy key: " + err + "\n";
+                console.error("Failed to copy key:", err);
               });
           },
 
@@ -1143,14 +1153,14 @@
                 .then(response => response.json())
                 .then(data => {
                   if (data.error) {
-                    this.logOutput += "Error: " + data.error + "\n";
+                    console.error("Error:", data.error);
                   } else {
-                    this.logOutput += "All keys removed\n";
+                    console.log("All keys removed");
                     this.fetchKeys();
                   }
                 })
                 .catch(error => {
-                  this.logOutput += "Error removing keys: " + error + "\n";
+                  console.error("Error removing keys:", error);
                 });
             }
           },
