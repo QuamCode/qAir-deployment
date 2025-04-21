@@ -966,15 +966,19 @@
           },
     
           updateTailscaleStatus(data) {
-            // Ensure peers is always an array
+            // Ensure peers is always an array, even if data.peers is undefined
             const peers = Array.isArray(data.peers) ? data.peers : [];
             
-            this.tailscaleStatus = {
+            // Create a new object with all the data, ensuring peers is always an array
+            const newStatus = {
               ...this.tailscaleStatus,
               ...data,
-              peers: peers, // Override peers with the ensured array
+              peers: peers,
               lastUpdate: new Date().toLocaleTimeString()
             };
+            
+            // Update the status
+            this.tailscaleStatus = newStatus;
             
             if (data.output) {
               const output = data.output.toLowerCase();
