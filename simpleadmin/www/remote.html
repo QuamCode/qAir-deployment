@@ -1032,6 +1032,9 @@
           },
     
           updateTailscaleStatus(data) {
+            // Store the current connection state
+            const wasConnected = this.tailscaleStatus.connected;
+            
             // Ensure peers is always an array and filter out empty peers
             const peers = Array.isArray(data.peers) 
               ? data.peers.filter(peer => peer && peer.id && peer.name) 
@@ -1056,6 +1059,11 @@
               if (ipMatch) {
                 this.tailscaleStatus.yourIP = ipMatch[1];
               }
+            }
+
+            // Force graph redraw if connection status changed
+            if (wasConnected !== this.tailscaleStatus.connected) {
+              this.drawCytoscapeGraph();
             }
           },
     
@@ -1149,7 +1157,7 @@
                           tooltip.style.left = (pos.x + 20) + "px";
                           tooltip.style.top = (pos.y - 20) + "px";
                           this.updateTooltipContent(node);
-                        }
+                        } 
                       }
                     }
                   }
