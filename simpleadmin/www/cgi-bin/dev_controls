@@ -6,6 +6,7 @@
 action=""
 param=""
 method=""
+hostname=""
 if [ -n "$QUERY_STRING" ]; then
   IFS='&' read -ra params <<< "$QUERY_STRING"
   for p in "${params[@]}"; do
@@ -13,6 +14,7 @@ if [ -n "$QUERY_STRING" ]; then
       action=*) action="${p#*=}" ;;
       port=*) param="${p#*=}" ;;
       method=*) method="${p#*=}" ;;
+      hostname=*) hostname="${p#*=}" ;;
     esac
   done
 fi
@@ -400,7 +402,11 @@ case "$action" in
     get_tailscale_status
     ;;
   "tailscale_up")
-    TS_OUT=$($SUDO $TAILSCALE up --accept-dns=false --reset 2>&1)
+    if [ -n "$hostname" ]; then
+      TS_OUT=$($SUDO $TAILSCALE up --accept-dns=false --reset --hostname="$hostname" 2>&1)
+    else
+      TS_OUT=$($SUDO $TAILSCALE up --accept-dns=false --reset 2>&1)
+    fi
     sleep 1
     ts_json=$(get_tailscale_status)
     echo "{\"status\": \"Tailscale up\", \"tailscale\": $ts_json}"

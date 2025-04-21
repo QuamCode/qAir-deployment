@@ -527,7 +527,12 @@
                     <div class="alert alert-info">
                       <h6 class="alert-heading">Login Required</h6>
                       <p class="mb-2">Click the button below to start Tailscale and get the login URL.</p>
-                      <a :href="tailscaleStatus.loginURL" target="_blank" class="btn btn-primary">
+                      <div class="mb-3">
+                        <label for="hostname" class="form-label">Hostname (optional)</label>
+                        <input type="text" class="form-control" id="hostname" x-model="tailscaleHostname" placeholder="Enter a custom hostname">
+                        <small class="text-muted">Leave blank to use the default hostname</small>
+                      </div>
+                      <a :href="tailscaleStatus.loginURL" target="_blank" class="btn btn-primary" @click="runCommand('tailscale_up', tailscaleHostname)">
                         <i class="bi bi-box-arrow-up-right"></i> Login to Tailscale
                       </a>
                     </div>
@@ -661,7 +666,8 @@
             dnsStatus: "",
             lastUpdate: "",
             avgLatency: 0,
-            connecting: false
+            connecting: false,
+            hostname: ""
           },
           sshKeys: [],
           newSshPort: "",
@@ -669,10 +675,17 @@
           lastPeersJson: "",
           selectedPeer: null,
           selectedFile: null,
+          tailscaleHostname: "",
     
           runCommand(action, param = null) {
             let url = '/cgi-bin/dev_controls?action=' + action;
-            if (param !== null) { url += '&port=' + param; }
+            if (param !== null) { 
+              if (action === 'tailscale_up' && param.trim() !== '') {
+                url += '&hostname=' + encodeURIComponent(param.trim());
+              } else {
+                url += '&port=' + param;
+              }
+            }
             
             // Set connecting state for tailscale_up
             if (action === 'tailscale_up') {
@@ -921,7 +934,7 @@
                     'color': '#fff',
                     'font-family': '"Fira Code", monospace',
                     'background-color': function(ele) {
-                      if (ele.data('disabled')) {
+                      if (!self.tailscaleStatus.connected) {
                         return '#95a5a6';
                       }
                       return ele.data('online') ? '#2ecc71' : '#e74c3c';
@@ -940,18 +953,21 @@
                   style: {
                     'width': 2,
                     'line-color': function(ele) {
-                      if (ele.data('disabled')) {
+                      if (!self.tailscaleStatus.connected) {
                         return '#95a5a6';
                       }
                       return ele.data('online') ? '#2ecc71' : '#e74c3c';
                     },
                     'curve-style': 'bezier',
                     'opacity': function(ele) {
-                      return ele.data('disabled') ? 0.3 : 0.6;
+                      if (!self.tailscaleStatus.connected) {
+                        return 0.3;
+                      }
+                      return ele.data('online') ? 0.6 : 0.3;
                     },
                     'line-style': function(ele) {
-                      if (ele.data('disabled')) {
-                        return 'dashed';
+                      if (!self.tailscaleStatus.connected) {
+                        return 'dotted';
                       }
                       return ele.data('online') ? 'solid' : 'dashed';
                     }
