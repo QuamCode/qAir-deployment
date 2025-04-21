@@ -511,6 +511,18 @@
                        :aria-valuemax="tailscaleStatus.peers.length">
                   </div>
                 </div>
+                
+                <!-- Login URL Section (shown when logged out) -->
+                <div class="mt-3" x-show="!tailscaleStatus.connected && tailscaleStatus.loginURL">
+                  <div class="alert alert-info">
+                    <h6 class="alert-heading">Login Required</h6>
+                    <p class="mb-2">Click the button below to start Tailscale and get the login URL.</p>
+                    <a :href="tailscaleStatus.loginURL" target="_blank" class="btn btn-primary" x-show="tailscaleStatus.loginURL">
+                      <i class="bi bi-box-arrow-up-right"></i> Login to Tailscale
+                    </a>
+                  </div>
+                </div>
+
                 <div class="btn-group w-100 mt-3">
                   <button class="btn btn-success" @click="runCommand('tailscale_up')" :disabled="tailscaleStatus.connected">
                     <i class="bi bi-power"></i> Connect
